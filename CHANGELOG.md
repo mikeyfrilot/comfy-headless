@@ -75,6 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stable Video Diffusion
 - Custom workflow support
 
-[Unreleased]: https://github.com/mcp-tool-shop/comfy-headless/compare/v2.5.1...HEAD
-[2.5.1]: https://github.com/mcp-tool-shop/comfy-headless/compare/v2.5.0...v2.5.1
-[2.5.0]: https://github.com/mcp-tool-shop/comfy-headless/releases/tag/v2.5.0
+[Unreleased]: https://github.com/mikeyfrilot/comfy-headless/compare/v2.5.1...HEAD
+[2.5.1]: https://github.com/mikeyfrilot/comfy-headless/compare/v2.5.0...v2.5.1
+[2.5.0]: https://github.com/mikeyfrilot/comfy-headless/releases/tag/v2.5.0
