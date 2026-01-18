@@ -1,0 +1,57 @@
+# Dockerfile for running Atheris fuzzing on Linux
+#
+# Atheris (Google's Python fuzzer) only supports Linux and macOS.
+# Use this Dockerfile to run fuzzing from Windows via Docker Desktop.
+#
+# Build:
+#   docker build -t comfy-fuzz -f tests/Dockerfile.atheris .
+#
+# Run specific target:
+#   docker run --rm comfy-fuzz prompt
+#   docker run --rm comfy-fuzz dimensions
+#   docker run --rm comfy-fuzz workflow
+#   docker run --rm comfy-fuzz path
+#
+# Run with time limit (300 seconds):
+#   docker run --rm comfy-fuzz prompt ./corpus/prompt -max_total_time=300
+#
+# Run all targets:
+#   docker run --rm comfy-fuzz all -max_total_time=60
+#
+# Run with persistent corpus (save findings):
+#   docker run --rm -v ./corpus:/app/corpus comfy-fuzz prompt /app/corpus/prompt
+
+FROM python:3.12-slim
+
+# Install build dependencies for Atheris
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    clang \
+    libfuzzer-14-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY pyproject.toml README.md ./
+COPY comfy_headless/ ./comfy_headless/
+
+# Install package and dependencies
+RUN pip install --no-cache-dir -e ".[dev]"
+
+# Install Atheris
+RUN pip install --no-cache-dir atheris
+
+# Create corpus directories
+RUN mkdir -p /app/corpus/prompt /app/corpus/dimensions /app/corpus/workflow /app/corpus/path /app/corpus/json
+
+# Copy test runner
+COPY tests/atheris_runner.py ./tests/
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Default command - show help
+ENTRYPOINT ["python", "tests/atheris_runner.py"]
+CMD ["--help"]

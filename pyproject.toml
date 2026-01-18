@@ -1,0 +1,187 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "comfy-headless"
+version = "2.5.1"
+description = "Production-ready headless client for ComfyUI with AI-powered prompt intelligence, video generation, and modular architecture"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Mikey Frilot" }
+]
+keywords = [
+    "comfyui",
+    "stable-diffusion",
+    "image-generation",
+    "video-generation",
+    "ai",
+    "headless",
+    "api",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+
+# Core dependencies - minimal for basic functionality
+# httpx removed from core - now optional for AI features
+dependencies = [
+    "requests>=2.28.0",
+    "tenacity>=8.0.0",
+]
+
+[project.optional-dependencies]
+# Individual feature groups - install only what you need
+ai = [
+    "httpx>=0.24.0",  # For Ollama/AI intelligence
+]
+websocket = [
+    "websockets>=12.0",  # Real-time progress via WebSocket
+]
+health = [
+    "psutil>=5.9.0",  # System health monitoring
+]
+ui = [
+    "gradio>=5.6.0",  # Web UI - minimum 5.6.0 for CVE-2025-23042 fix
+]
+validation = [
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",  # Config validation
+]
+observability = [
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp>=1.20.0",  # Distributed tracing
+]
+
+# Bundle presets for convenience
+standard = [
+    "comfy-headless[ai,websocket]",  # Recommended for most users
+]
+full = [
+    "comfy-headless[ai,websocket,health,ui,validation,observability]",  # Everything
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "httpx>=0.24.0",  # Needed for testing AI features
+    "websockets>=12.0",  # Needed for testing WebSocket
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mcp-tool-shop/comfy-headless"
+Documentation = "https://github.com/mcp-tool-shop/comfy-headless#readme"
+Repository = "https://github.com/mcp-tool-shop/comfy-headless"
+Issues = "https://github.com/mcp-tool-shop/comfy-headless/issues"
+
+[project.scripts]
+comfy-headless = "comfy_headless.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["comfy_headless"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/comfy_headless",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "B905",   # zip without explicit strict
+    "C901",   # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports in __init__
+"tests/*" = ["ARG"]       # unused arguments in tests
+
+[tool.ruff.isort]
+known-first-party = ["comfy_headless"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--strict-config",
+]
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests that require external services",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["comfy_headless"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
