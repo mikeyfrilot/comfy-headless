@@ -1,16 +1,56 @@
+<div align="center">
+
 # Comfy Headless
 
-**Making ComfyUI's power accessible without the complexity.**
+**Making ComfyUI's power accessible without the complexity**
 
-A clean, headless interface for ComfyUI with AI-powered prompt enhancement, template-based workflows, and multi-model video generation.
+[![PyPI version](https://img.shields.io/pypi/v/comfy-headless?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/comfy-headless/)
+[![Downloads](https://img.shields.io/pypi/dm/comfy-headless?color=green&logo=pypi&logoColor=white)](https://pypi.org/project/comfy-headless/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-2.5.1-green.svg)](https://github.com/mikeyfrilot/comfy-headless/releases)
+[![GitHub stars](https://img.shields.io/github/stars/mikeyfrilot/comfy-headless?style=social)](https://github.com/mikeyfrilot/comfy-headless)
 
-![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Version](https://img.shields.io/badge/version-2.5.1-green.svg)
+*AI image & video generation in 3 lines of code*
+
+[Installation](#installation) • [Quick Start](#quick-start) • [Video Models](#video-models-v250) • [Web UI](#launch-the-web-ui) • [Contributing](#contributing)
+
+</div>
+
+---
+
+## Why Comfy Headless?
+
+| Problem | Solution |
+|---------|----------|
+| ComfyUI's node interface is overwhelming | Simple presets and clean Python API |
+| Prompt engineering is hard | AI-powered prompt enhancement |
+| Video generation is complex | One-line video with model presets |
+| No idea what settings to use | Best settings for your intent, automatically |
+
+<!--
+## Demo
+
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="Comfy Headless Demo" width="600">
+</p>
+-->
+
+## Quick Start
+
+```bash
+pip install comfy-headless[standard]
+```
+
+```python
+from comfy_headless import ComfyClient
+
+client = ComfyClient()
+result = client.generate_image("a beautiful sunset over mountains")
+print(f"Generated: {result['images']}")
+```
 
 ## Philosophy
-
-ComfyUI is incredibly powerful, but its node-based interface can be overwhelming. Comfy Headless bridges this gap:
 
 - **For Users**: Simple presets and AI-powered prompt enhancement
 - **For Developers**: Clean API with template-based workflow compilation
@@ -52,13 +92,13 @@ pip install comfy-headless[full]
 | `standard` | ai + websocket | Recommended bundle |
 | `full` | All of the above | Everything |
 
-## Requirements
+### Requirements
 
 - Python 3.10+
 - ComfyUI running locally (default: `http://localhost:8188`)
 - Optional: Ollama for AI prompt enhancement
 
-## Quick Start
+## Usage
 
 ### Use as a Library
 
@@ -71,10 +111,10 @@ result = client.generate_image("a beautiful sunset over mountains")
 print(f"Generated: {result['images']}")
 ```
 
-### With AI Enhancement (requires `[ai]` extra)
+### With AI Enhancement
 
 ```python
-from comfy_headless import ComfyClient, analyze_prompt, enhance_prompt
+from comfy_headless import analyze_prompt, enhance_prompt
 
 # Analyze a prompt
 analysis = analyze_prompt("a cyberpunk city at night with neon lights")
@@ -91,7 +131,7 @@ print(enhanced.negative)   # Style-aware negative prompt
 ### Video Generation
 
 ```python
-from comfy_headless import ComfyClient, VIDEO_PRESETS, list_video_presets
+from comfy_headless import ComfyClient, list_video_presets
 
 # See available presets
 print(list_video_presets())
@@ -104,7 +144,7 @@ result = client.generate_video(
 )
 ```
 
-### Launch the Web UI (requires `[ui]` extra)
+### Launch the Web UI
 
 ```python
 from comfy_headless import launch
@@ -124,7 +164,7 @@ python -m comfy_headless.ui
 - **Models Browser** - View checkpoints, LoRAs, motion models
 - **Settings** - Connection management, timeouts, system info
 
-**Theme:** Ocean Mist - soft teal accents on warm neutral backgrounds (Gradio 6.0)
+**Theme:** Ocean Mist - soft teal accents on warm neutral backgrounds
 
 ## Video Models (v2.5.0)
 
@@ -148,33 +188,18 @@ from comfy_headless import VIDEO_PRESETS, get_recommended_preset
 # Get preset recommendation based on your VRAM
 preset = get_recommended_preset(vram_gb=16)  # Returns "hunyuan15_720p"
 
-# Available presets
-presets = {
-    # LTX-Video 2 (Fast, great quality)
-    "ltx_quick": "768x512, 25 frames, 20 steps",
-    "ltx_standard": "1280x720, 49 frames, 25 steps",
-    "ltx_quality": "1280x720, 97 frames, 30 steps",
+# LTX-Video 2 (Fast, great quality)
+# "ltx_quick": 768x512, 25 frames, 20 steps
+# "ltx_standard": 1280x720, 49 frames, 25 steps
+# "ltx_quality": 1280x720, 97 frames, 30 steps
 
-    # Hunyuan 1.5 (Best quality)
-    "hunyuan15_720p": "1280x720, 121 frames",
-    "hunyuan15_quality": "1280x720, 121 frames, cfg=6",
-    "hunyuan15_fast": "848x480, 61 frames, 6 steps",
-    "hunyuan15_1080p": "1920x1080 with super-resolution",
+# Hunyuan 1.5 (Best quality)
+# "hunyuan15_720p": 1280x720, 121 frames
+# "hunyuan15_1080p": 1920x1080 with super-resolution
 
-    # Wan (Efficient)
-    "wan_1.3b": "720x480, 49 frames (6GB VRAM)",
-    "wan_14b": "1280x720, 81 frames (12GB VRAM)",
-    "wan_fast": "720x480, 25 frames, 4 steps",
-
-    # Mochi (Text adherence)
-    "mochi": "848x480, 84 frames",
-    "mochi_short": "848x480, 37 frames",
-
-    # Legacy AnimateDiff
-    "quick": "512x512, 16 frames, 4-step lightning",
-    "standard": "512x512, 16 frames",
-    "quality": "768x768, 24 frames with RIFE",
-}
+# Wan (Efficient)
+# "wan_1.3b": 720x480, 49 frames (6GB VRAM)
+# "wan_14b": 1280x720, 81 frames (12GB VRAM)
 ```
 
 ## Feature Flags
@@ -182,7 +207,7 @@ presets = {
 Check what features are available:
 
 ```python
-from comfy_headless import FEATURES, list_available_features, list_missing_features
+from comfy_headless import FEATURES, list_missing_features
 
 print(FEATURES)
 # {'ai': True, 'websocket': True, 'health': False, ...}
@@ -191,7 +216,7 @@ print(list_missing_features())
 # {'health': 'pip install comfy-headless[health]', ...}
 ```
 
-## WebSocket Progress (requires `[websocket]` extra)
+## WebSocket Progress
 
 ```python
 import asyncio
@@ -199,10 +224,7 @@ from comfy_headless import ComfyWSClient
 
 async def generate_with_progress():
     async with ComfyWSClient() as ws:
-        # Queue a prompt
         prompt_id = await ws.queue_prompt(workflow)
-
-        # Wait with progress callbacks
         result = await ws.wait_for_completion(
             prompt_id,
             on_progress=lambda p: print(f"Progress: {p.progress}%")
@@ -239,18 +261,6 @@ from comfy_headless import (
 )
 ```
 
-### Configuration
-
-```python
-from comfy_headless import settings, get_settings, reload_settings
-
-# Access settings
-print(settings.comfy_url)  # http://localhost:8188
-
-# Override via environment
-# COMFY_HEADLESS_COMFY_URL=http://remote:8188
-```
-
 ### Error Handling
 
 ```python
@@ -283,13 +293,11 @@ comfy_headless/
 ├── workflows.py         # Template compiler & presets
 ├── video.py             # Video models & presets
 ├── ui.py                # Gradio 6.0 interface (requires [ui])
-├── theme.py             # Ocean Mist theme (soft teal, warm neutrals)
+├── theme.py             # Ocean Mist theme
 ├── config.py            # Settings management
-├── exceptions.py        # Error types with verbosity
+├── exceptions.py        # Error types
 ├── retry.py             # Circuit breaker, rate limiting
 ├── health.py            # Health checks (requires [health])
-├── secrets_manager.py   # Secrets management utilities
-├── help_system.py       # Contextual help system
 └── tests/               # Test suite
 ```
 
@@ -308,6 +316,15 @@ Install these custom nodes:
 - Wan: [ComfyUI-WanVideoWrapper](https://github.com/kijai/ComfyUI-WanVideoWrapper)
 - AnimateDiff: [ComfyUI-AnimateDiff-Evolved](https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved)
 
+## Related Projects
+
+Part of the **Compass Suite** for AI-powered development:
+
+- [Tool Compass](https://github.com/mikeyfrilot/tool-compass) - Semantic MCP tool discovery
+- [File Compass](https://github.com/mikeyfrilot/file-compass) - Semantic file search
+- [Integradio](https://github.com/mikeyfrilot/integradio) - Vector-embedded Gradio components
+- [Backpropagate](https://github.com/mikeyfrilot/backpropagate) - Headless LLM fine-tuning
+
 ## License
 
 MIT License - see [LICENSE](LICENSE)
@@ -321,3 +338,11 @@ Areas of interest:
 - Workflow templates
 - Documentation
 - Bug fixes
+
+---
+
+<div align="center">
+
+**[Documentation](https://github.com/mikeyfrilot/comfy-headless#readme)** • **[Issues](https://github.com/mikeyfrilot/comfy-headless/issues)** • **[Discussions](https://github.com/mikeyfrilot/comfy-headless/discussions)**
+
+</div>
