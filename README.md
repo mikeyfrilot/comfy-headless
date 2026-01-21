@@ -6,6 +6,8 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/comfy-headless?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/comfy-headless/)
 [![Downloads](https://img.shields.io/pypi/dm/comfy-headless?color=green&logo=pypi&logoColor=white)](https://pypi.org/project/comfy-headless/)
+[![Tests](https://github.com/mikeyfrilot/comfy-headless/actions/workflows/test.yml/badge.svg)](https://github.com/mikeyfrilot/comfy-headless/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/mikeyfrilot/comfy-headless/graph/badge.svg)](https://codecov.io/gh/mikeyfrilot/comfy-headless)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-2.5.1-green.svg)](https://github.com/mikeyfrilot/comfy-headless/releases)
