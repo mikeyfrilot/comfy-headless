@@ -9,24 +9,22 @@ Covers:
 - Message handling
 """
 
-import pytest
 import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
 from dataclasses import is_dataclass
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # Check if websockets is available
 try:
     import websockets
+
     WEBSOCKETS_INSTALLED = True
 except ImportError:
     WEBSOCKETS_INSTALLED = False
 
 
-pytestmark = pytest.mark.skipif(
-    not WEBSOCKETS_INSTALLED,
-    reason="websockets package not installed"
-)
+pytestmark = pytest.mark.skipif(not WEBSOCKETS_INSTALLED, reason="websockets package not installed")
 
 
 class TestWSMessageType:
@@ -37,9 +35,15 @@ class TestWSMessageType:
         from comfy_headless.websocket_client import WSMessageType
 
         expected = [
-            "STATUS", "PROGRESS", "EXECUTING", "EXECUTED",
-            "EXECUTION_START", "EXECUTION_CACHED", "EXECUTION_ERROR",
-            "EXECUTION_INTERRUPTED", "PREVIEW"
+            "STATUS",
+            "PROGRESS",
+            "EXECUTING",
+            "EXECUTED",
+            "EXECUTION_START",
+            "EXECUTION_CACHED",
+            "EXECUTION_ERROR",
+            "EXECUTION_INTERRUPTED",
+            "PREVIEW",
         ]
 
         for name in expected:
@@ -90,51 +94,31 @@ class TestWSProgress:
         """WSProgress.percent calculates percentage."""
         from comfy_headless.websocket_client import WSProgress
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=0.5,
-            max_progress=1.0
-        )
+        progress = WSProgress(prompt_id="test", progress=0.5, max_progress=1.0)
         assert progress.percent == 50.0
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=25,
-            max_progress=100
-        )
+        progress = WSProgress(prompt_id="test", progress=25, max_progress=100)
         assert progress.percent == 25.0
 
     def test_wsprogress_percent_zero_max(self):
         """WSProgress.percent handles zero max_progress."""
         from comfy_headless.websocket_client import WSProgress
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=5,
-            max_progress=0
-        )
+        progress = WSProgress(prompt_id="test", progress=5, max_progress=0)
         assert progress.percent == 0.0
 
     def test_wsprogress_normalized(self):
         """WSProgress.normalized returns 0-1 range."""
         from comfy_headless.websocket_client import WSProgress
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=0.75,
-            max_progress=1.0
-        )
+        progress = WSProgress(prompt_id="test", progress=0.75, max_progress=1.0)
         assert progress.normalized == 0.75
 
     def test_wsprogress_normalized_zero_max(self):
         """WSProgress.normalized handles zero max_progress."""
         from comfy_headless.websocket_client import WSProgress
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=5,
-            max_progress=0
-        )
+        progress = WSProgress(prompt_id="test", progress=5, max_progress=0)
         assert progress.normalized == 0.0
 
     def test_wsprogress_with_all_fields(self):
@@ -150,7 +134,7 @@ class TestWSProgress:
             step=10,
             total_steps=20,
             status="sampling",
-            preview_data=b"image data"
+            preview_data=b"image data",
         )
 
         assert progress.prompt_id == "test-123"
@@ -237,7 +221,7 @@ class TestComfyWSClientConnection:
         mock_ws = AsyncMock()
         mock_ws.closed = False
 
-        with patch('websockets.connect', new=AsyncMock(return_value=mock_ws)):
+        with patch("websockets.connect", new=AsyncMock(return_value=mock_ws)):
             result = await client.connect()
             assert result is True
             assert client.connected is True
@@ -245,8 +229,8 @@ class TestComfyWSClientConnection:
     @pytest.mark.asyncio
     async def test_connect_retries_on_failure(self):
         """connect retries on failure."""
-        from comfy_headless.websocket_client import ComfyWSClient
         from comfy_headless.exceptions import ComfyUIConnectionError
+        from comfy_headless.websocket_client import ComfyWSClient
 
         client = ComfyWSClient(reconnect_attempts=2, reconnect_delay=0.01)
 
@@ -257,7 +241,7 @@ class TestComfyWSClientConnection:
             connect_calls += 1
             raise ConnectionError("Failed")
 
-        with patch('websockets.connect', new=fail_connect):
+        with patch("websockets.connect", new=fail_connect):
             with pytest.raises(ComfyUIConnectionError):
                 await client.connect()
 
@@ -274,7 +258,7 @@ class TestComfyWSClientConnection:
         mock_ws.closed = False
         mock_ws.close = AsyncMock()
 
-        with patch('websockets.connect', new=AsyncMock(return_value=mock_ws)):
+        with patch("websockets.connect", new=AsyncMock(return_value=mock_ws)):
             await client.connect()
 
             # Cancel the message task immediately
@@ -298,7 +282,7 @@ class TestComfyWSClientContextManager:
         mock_ws.closed = False
         mock_ws.close = AsyncMock()
 
-        with patch('websockets.connect', new=AsyncMock(return_value=mock_ws)):
+        with patch("websockets.connect", new=AsyncMock(return_value=mock_ws)):
             async with ComfyWSClient() as client:
                 assert client.connected is True
 
@@ -327,7 +311,7 @@ class TestComfyWSClientQueuePrompt:
         mock_async_client.post.return_value = mock_response
 
         # Mock httpx.AsyncClient as context manager
-        with patch('httpx.AsyncClient') as mock_client_class:
+        with patch("httpx.AsyncClient") as mock_client_class:
             mock_client_class.return_value.__aenter__.return_value = mock_async_client
             mock_client_class.return_value.__aexit__.return_value = None
 
@@ -350,6 +334,7 @@ class TestWebsocketsAvailableFlag:
 
         try:
             import websockets
+
             assert WEBSOCKETS_AVAILABLE is True
         except ImportError:
             assert WEBSOCKETS_AVAILABLE is False
@@ -365,11 +350,7 @@ class TestWSProgressStepTracking:
         # Simulate progress through sampling
         for step in range(1, 21):
             progress = WSProgress(
-                prompt_id="test",
-                step=step,
-                total_steps=20,
-                progress=step,
-                max_progress=20
+                prompt_id="test", step=step, total_steps=20, progress=step, max_progress=20
             )
 
             assert progress.step == step
@@ -445,8 +426,8 @@ class TestReconnectionBackoff:
     @pytest.mark.asyncio
     async def test_exponential_backoff(self):
         """Reconnection uses exponential backoff."""
-        from comfy_headless.websocket_client import ComfyWSClient
         from comfy_headless.exceptions import ComfyUIConnectionError
+        from comfy_headless.websocket_client import ComfyWSClient
 
         client = ComfyWSClient(reconnect_attempts=3, reconnect_delay=0.01)
 
@@ -457,8 +438,8 @@ class TestReconnectionBackoff:
             delays.append(duration)
             await original_sleep(0)  # Don't actually wait
 
-        with patch('asyncio.sleep', new=track_sleep):
-            with patch('websockets.connect', new=AsyncMock(side_effect=ConnectionError)):
+        with patch("asyncio.sleep", new=track_sleep):
+            with patch("websockets.connect", new=AsyncMock(side_effect=ConnectionError)):
                 with pytest.raises(ComfyUIConnectionError):
                     await client.connect()
 
@@ -473,16 +454,7 @@ class TestWSMessageParsing:
     def test_status_message_structure(self):
         """Status messages have expected structure."""
         # This tests the expected message format
-        status_msg = {
-            "type": "status",
-            "data": {
-                "status": {
-                    "exec_info": {
-                        "queue_remaining": 0
-                    }
-                }
-            }
-        }
+        status_msg = {"type": "status", "data": {"status": {"exec_info": {"queue_remaining": 0}}}}
 
         assert status_msg["type"] == "status"
         assert "data" in status_msg
@@ -491,12 +463,7 @@ class TestWSMessageParsing:
         """Progress messages have expected structure."""
         progress_msg = {
             "type": "progress",
-            "data": {
-                "value": 5,
-                "max": 20,
-                "prompt_id": "test-123",
-                "node": "3"
-            }
+            "data": {"value": 5, "max": 20, "prompt_id": "test-123", "node": "3"},
         }
 
         assert progress_msg["type"] == "progress"
@@ -505,13 +472,7 @@ class TestWSMessageParsing:
 
     def test_executing_message_structure(self):
         """Executing messages have expected structure."""
-        executing_msg = {
-            "type": "executing",
-            "data": {
-                "node": "3",
-                "prompt_id": "test-123"
-            }
-        }
+        executing_msg = {"type": "executing", "data": {"node": "3", "prompt_id": "test-123"}}
 
         assert executing_msg["type"] == "executing"
         assert executing_msg["data"]["node"] == "3"
@@ -523,10 +484,8 @@ class TestWSMessageParsing:
             "data": {
                 "node": "9",
                 "prompt_id": "test-123",
-                "output": {
-                    "images": [{"filename": "test.png"}]
-                }
-            }
+                "output": {"images": [{"filename": "test.png"}]},
+            },
         }
 
         assert executed_msg["type"] == "executed"

@@ -22,16 +22,14 @@ Usage:
     # Later: manager.cleanup()
 """
 
-import os
-import time
 import atexit
 import signal
 import threading
+import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Optional, Set, List, Callable
-from dataclasses import dataclass, field
 
-from .config import settings, get_temp_dir
+from .config import get_temp_dir, settings
 from .logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -56,6 +54,7 @@ __all__ = [
 # TEMP FILE MANAGER
 # =============================================================================
 
+
 class TempFileManager:
     """
     Manages temporary files with automatic cleanup.
@@ -69,9 +68,9 @@ class TempFileManager:
 
     def __init__(
         self,
-        base_dir: Optional[Path] = None,
+        base_dir: Path | None = None,
         auto_cleanup: bool = True,
-        max_age_seconds: float = 3600.0
+        max_age_seconds: float = 3600.0,
     ):
         """
         Initialize the temp file manager.
@@ -85,7 +84,7 @@ class TempFileManager:
         self.auto_cleanup = auto_cleanup
         self.max_age_seconds = max_age_seconds
 
-        self._files: Set[Path] = set()
+        self._files: set[Path] = set()
         self._lock = threading.Lock()
 
         # Ensure directory exists (with proper error handling)
@@ -99,15 +98,12 @@ class TempFileManager:
             raise
 
         logger.debug(
-            f"TempFileManager initialized",
-            extra={"base_dir": str(self.base_dir), "auto_cleanup": auto_cleanup}
+            "TempFileManager initialized",
+            extra={"base_dir": str(self.base_dir), "auto_cleanup": auto_cleanup},
         )
 
     def create_temp_file(
-        self,
-        suffix: str,
-        content: Optional[bytes] = None,
-        prefix: str = "comfy_"
+        self, suffix: str, content: bytes | None = None, prefix: str = "comfy_"
     ) -> Path:
         """
         Create a temporary file.
@@ -241,8 +237,8 @@ class TempFileManager:
 # GLOBAL CLEANUP
 # =============================================================================
 
-_global_manager: Optional[TempFileManager] = None
-_cleanup_callbacks: List[Callable[[], None]] = []
+_global_manager: TempFileManager | None = None
+_cleanup_callbacks: list[Callable[[], None]] = []
 _shutdown_registered = False
 
 
@@ -259,7 +255,7 @@ def register_cleanup_callback(callback: Callable[[], None]):
     _cleanup_callbacks.append(callback)
 
 
-def cleanup_temp_files(max_age_seconds: Optional[float] = None):
+def cleanup_temp_files(max_age_seconds: float | None = None):
     """
     Clean up old temp files in the comfy_headless temp directory.
 
@@ -357,6 +353,7 @@ def register_shutdown_handlers():
 # BACKGROUND CLEANUP THREAD
 # =============================================================================
 
+
 class CleanupThread(threading.Thread):
     """
     Background thread for periodic cleanup.
@@ -368,11 +365,7 @@ class CleanupThread(threading.Thread):
         cleaner.stop()
     """
 
-    def __init__(
-        self,
-        interval: float = 3600.0,
-        max_file_age: float = 7200.0
-    ):
+    def __init__(self, interval: float = 3600.0, max_file_age: float = 7200.0):
         super().__init__(daemon=True)
         self.interval = interval
         self.max_file_age = max_file_age
@@ -397,6 +390,7 @@ class CleanupThread(threading.Thread):
 # =============================================================================
 # CONVENIENCE FUNCTIONS FOR UI
 # =============================================================================
+
 
 def save_temp_image(content: bytes) -> str:
     """

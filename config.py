@@ -20,7 +20,6 @@ Features:
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 __all__ = [
     # Config classes (vary based on pydantic availability)
@@ -44,6 +43,7 @@ __all__ = [
 try:
     from pydantic import SecretStr
     from pydantic_settings import BaseSettings, SettingsConfigDict
+
     PYDANTIC_SETTINGS_AVAILABLE = True
 except ImportError:
     # Fallback for environments without pydantic-settings
@@ -59,6 +59,7 @@ if PYDANTIC_SETTINGS_AVAILABLE:
 
     class ComfyUIConfig(BaseSettings):
         """ComfyUI connection configuration."""
+
         model_config = SettingsConfigDict(
             env_prefix="COMFY_HEADLESS_COMFYUI__",
             env_ignore_empty=True,
@@ -71,9 +72,9 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         timeout_image: float = 60.0
         timeout_video: float = 120.0
 
-
     class OllamaConfig(BaseSettings):
         """Ollama AI configuration."""
+
         model_config = SettingsConfigDict(
             env_prefix="COMFY_HEADLESS_OLLAMA__",
             env_ignore_empty=True,
@@ -88,11 +89,11 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         timeout_connect: float = 2.0
         # Custom few-shot examples file path (optional)
         # Format: JSON array of {"input": "...", "output": "...", "style": "..."}
-        few_shot_examples_path: Optional[str] = None
-
+        few_shot_examples_path: str | None = None
 
     class RetryConfig(BaseSettings):
         """Retry and resilience configuration."""
+
         model_config = SettingsConfigDict(
             env_prefix="COMFY_HEADLESS_RETRY__",
             env_ignore_empty=True,
@@ -105,9 +106,9 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         circuit_breaker_threshold: int = 5
         circuit_breaker_reset: float = 60.0
 
-
     class LoggingConfig(BaseSettings):
         """Logging configuration with OpenTelemetry support."""
+
         model_config = SettingsConfigDict(
             env_prefix="COMFY_HEADLESS_LOGGING__",
             env_ignore_empty=True,
@@ -116,13 +117,12 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         level: str = "INFO"
         format: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
         date_format: str = "%Y-%m-%d %H:%M:%S"
-        file: Optional[str] = None
+        file: str | None = None
         json_output: bool = False
         # NEW: OpenTelemetry integration
         otel_enabled: bool = False
         otel_service_name: str = "comfy-headless"
-        otel_endpoint: Optional[str] = None  # OTLP endpoint
-
+        otel_endpoint: str | None = None  # OTLP endpoint
 
     class UIConfig(BaseSettings):
         """
@@ -132,6 +132,7 @@ if PYDANTIC_SETTINGS_AVAILABLE:
             Default host is 127.0.0.1 (localhost only) for security.
             Set COMFY_HEADLESS_UI__HOST=0.0.0.0 to expose on network.
         """
+
         model_config = SettingsConfigDict(
             env_prefix="COMFY_HEADLESS_UI__",
             env_ignore_empty=True,
@@ -144,9 +145,9 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         auto_open: bool = True
         temp_cleanup_interval: int = 3600
 
-
     class GenerationConfig(BaseSettings):
         """Default generation settings."""
+
         model_config = SettingsConfigDict(
             env_prefix="COMFY_HEADLESS_GENERATION__",
             env_ignore_empty=True,
@@ -162,9 +163,9 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         generation_timeout: float = 300.0
         video_timeout: float = 600.0
 
-
     class HttpConfig(BaseSettings):
         """HTTP client configuration (NEW: for httpx support)."""
+
         model_config = SettingsConfigDict(
             env_prefix="COMFY_HEADLESS_HTTP__",
             env_ignore_empty=True,
@@ -183,7 +184,6 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         read_timeout: float = 30.0
         write_timeout: float = 30.0
         pool_timeout: float = 10.0
-
 
     class Settings(BaseSettings):
         """
@@ -204,6 +204,7 @@ if PYDANTIC_SETTINGS_AVAILABLE:
             COMFY_HEADLESS_LOGGING__LEVEL=DEBUG
             COMFY_HEADLESS_RETRY__MAX_RETRIES=5
         """
+
         model_config = SettingsConfigDict(
             env_prefix="COMFY_HEADLESS_",
             env_file=".env",
@@ -272,10 +273,10 @@ if PYDANTIC_SETTINGS_AVAILABLE:
 
 else:
     # Fallback implementation using dataclasses (for compatibility)
-    from dataclasses import dataclass, field
     import os
+    from dataclasses import dataclass, field
 
-    def _get_env(key: str, default: str = None) -> Optional[str]:
+    def _get_env(key: str, default: str = None) -> str | None:
         return os.environ.get(f"COMFY_HEADLESS_{key}", default)
 
     def _get_env_int(key: str, default: int) -> int:
@@ -293,44 +294,73 @@ else:
     @dataclass
     class ComfyUIConfig:
         url: str = field(default_factory=lambda: _get_env("COMFYUI__URL", "http://localhost:8188"))
-        timeout_connect: float = field(default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_CONNECT", 5.0))
-        timeout_read: float = field(default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_READ", 30.0))
-        timeout_queue: float = field(default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_QUEUE", 10.0))
-        timeout_image: float = field(default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_IMAGE", 60.0))
-        timeout_video: float = field(default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_VIDEO", 120.0))
+        timeout_connect: float = field(
+            default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_CONNECT", 5.0)
+        )
+        timeout_read: float = field(
+            default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_READ", 30.0)
+        )
+        timeout_queue: float = field(
+            default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_QUEUE", 10.0)
+        )
+        timeout_image: float = field(
+            default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_IMAGE", 60.0)
+        )
+        timeout_video: float = field(
+            default_factory=lambda: _get_env_float("COMFYUI__TIMEOUT_VIDEO", 120.0)
+        )
 
     @dataclass
     class OllamaConfig:
         url: str = field(default_factory=lambda: _get_env("OLLAMA__URL", "http://localhost:11434"))
         model: str = field(default_factory=lambda: _get_env("OLLAMA__MODEL", "qwen2.5:7b"))
-        timeout_analysis: float = field(default_factory=lambda: _get_env_float("OLLAMA__TIMEOUT_ANALYSIS", 15.0))
-        timeout_enhancement: float = field(default_factory=lambda: _get_env_float("OLLAMA__TIMEOUT_ENHANCEMENT", 30.0))
-        timeout_connect: float = field(default_factory=lambda: _get_env_float("OLLAMA__TIMEOUT_CONNECT", 2.0))
-        few_shot_examples_path: Optional[str] = field(default_factory=lambda: _get_env("OLLAMA__FEW_SHOT_EXAMPLES_PATH", None))
+        timeout_analysis: float = field(
+            default_factory=lambda: _get_env_float("OLLAMA__TIMEOUT_ANALYSIS", 15.0)
+        )
+        timeout_enhancement: float = field(
+            default_factory=lambda: _get_env_float("OLLAMA__TIMEOUT_ENHANCEMENT", 30.0)
+        )
+        timeout_connect: float = field(
+            default_factory=lambda: _get_env_float("OLLAMA__TIMEOUT_CONNECT", 2.0)
+        )
+        few_shot_examples_path: str | None = field(
+            default_factory=lambda: _get_env("OLLAMA__FEW_SHOT_EXAMPLES_PATH", None)
+        )
 
     @dataclass
     class RetryConfig:
         max_retries: int = field(default_factory=lambda: _get_env_int("RETRY__MAX_RETRIES", 3))
-        backoff_base: float = field(default_factory=lambda: _get_env_float("RETRY__BACKOFF_BASE", 1.5))
-        backoff_max: float = field(default_factory=lambda: _get_env_float("RETRY__BACKOFF_MAX", 30.0))
-        backoff_jitter: bool = field(default_factory=lambda: _get_env_bool("RETRY__BACKOFF_JITTER", True))
-        circuit_breaker_threshold: int = field(default_factory=lambda: _get_env_int("RETRY__CIRCUIT_BREAKER_THRESHOLD", 5))
-        circuit_breaker_reset: float = field(default_factory=lambda: _get_env_float("RETRY__CIRCUIT_BREAKER_RESET", 60.0))
+        backoff_base: float = field(
+            default_factory=lambda: _get_env_float("RETRY__BACKOFF_BASE", 1.5)
+        )
+        backoff_max: float = field(
+            default_factory=lambda: _get_env_float("RETRY__BACKOFF_MAX", 30.0)
+        )
+        backoff_jitter: bool = field(
+            default_factory=lambda: _get_env_bool("RETRY__BACKOFF_JITTER", True)
+        )
+        circuit_breaker_threshold: int = field(
+            default_factory=lambda: _get_env_int("RETRY__CIRCUIT_BREAKER_THRESHOLD", 5)
+        )
+        circuit_breaker_reset: float = field(
+            default_factory=lambda: _get_env_float("RETRY__CIRCUIT_BREAKER_RESET", 60.0)
+        )
 
     @dataclass
     class LoggingConfig:
         level: str = field(default_factory=lambda: _get_env("LOGGING__LEVEL", "INFO"))
         format: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
         date_format: str = "%Y-%m-%d %H:%M:%S"
-        file: Optional[str] = None
+        file: str | None = None
         json_output: bool = False
         otel_enabled: bool = False
         otel_service_name: str = "comfy-headless"
-        otel_endpoint: Optional[str] = None
+        otel_endpoint: str | None = None
 
     @dataclass
     class UIConfig:
         """Security: Default to localhost-only."""
+
         port: int = field(default_factory=lambda: _get_env_int("UI__PORT", 7861))
         host: str = field(default_factory=lambda: _get_env("UI__HOST", "127.0.0.1"))
         share: bool = False
@@ -380,7 +410,8 @@ else:
 # CACHED SETTINGS INSTANCE
 # =============================================================================
 
-@lru_cache()
+
+@lru_cache
 def get_settings() -> Settings:
     """
     Get cached settings instance.
@@ -399,6 +430,7 @@ settings = get_settings()
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
+
 def reload_settings() -> Settings:
     """Reload all settings from environment variables."""
     get_settings.cache_clear()
@@ -410,6 +442,7 @@ def reload_settings() -> Settings:
 def get_temp_dir() -> Path:
     """Get the temp directory for this package."""
     import tempfile
+
     temp_dir = Path(tempfile.gettempdir()) / "comfy_headless"
     temp_dir.mkdir(exist_ok=True)
     return temp_dir

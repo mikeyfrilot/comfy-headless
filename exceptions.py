@@ -29,10 +29,10 @@ Usage:
             print(f"Try: {suggestion}")
 """
 
-from typing import Optional, Dict, Any, List, Tuple
-from enum import Enum
 import os
 import sys
+from enum import Enum
+from typing import Any
 
 __all__ = [
     # Error levels and verbosity
@@ -83,13 +83,15 @@ EXCEPTION_GROUPS_AVAILABLE = sys.version_info >= (3, 11)
 # ERROR LEVELS AND VERBOSITY
 # =============================================================================
 
+
 class ErrorLevel(Enum):
     """Error severity levels for filtering and display."""
-    DEBUG = "debug"       # Developer-only details
-    INFO = "info"         # Informational
-    WARNING = "warning"   # Recoverable issues
-    ERROR = "error"       # Operation failed
-    CRITICAL = "critical" # System-level failure
+
+    DEBUG = "debug"  # Developer-only details
+    INFO = "info"  # Informational
+    WARNING = "warning"  # Recoverable issues
+    ERROR = "error"  # Operation failed
+    CRITICAL = "critical"  # System-level failure
 
 
 class VerbosityLevel(Enum):
@@ -100,12 +102,13 @@ class VerbosityLevel(Enum):
     CASUAL: User-friendly messages for general users
     DEVELOPER: Full technical details for debugging
     """
-    ELI5 = "eli5"           # Explain Like I'm 5
-    CASUAL = "casual"       # Regular user
-    DEVELOPER = "developer" # Full technical details
+
+    ELI5 = "eli5"  # Explain Like I'm 5
+    CASUAL = "casual"  # Regular user
+    DEVELOPER = "developer"  # Full technical details
 
 
-_current_verbosity: Optional[VerbosityLevel] = None
+_current_verbosity: VerbosityLevel | None = None
 
 
 def _get_verbosity() -> VerbosityLevel:
@@ -140,6 +143,7 @@ def _is_production() -> bool:
 # BASE EXCEPTION
 # =============================================================================
 
+
 class ComfyHeadlessError(Exception):
     """
     Base exception for all comfy_headless errors.
@@ -163,20 +167,20 @@ class ComfyHeadlessError(Exception):
     # Default messages (can be overridden by subclasses)
     _default_user_message = "An error occurred"
     _default_eli5_message = "Something went wrong"
-    _default_suggestions: List[str] = []
+    _default_suggestions: list[str] = []
 
     def __init__(
         self,
         message: str,
         *,
-        user_message: Optional[str] = None,
-        eli5_message: Optional[str] = None,
-        code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
-        suggestions: Optional[List[str]] = None,
+        user_message: str | None = None,
+        eli5_message: str | None = None,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+        cause: Exception | None = None,
+        suggestions: list[str] | None = None,
         level: ErrorLevel = ErrorLevel.ERROR,
-        request_id: Optional[str] = None,
+        request_id: str | None = None,
     ):
         super().__init__(message)
         self.message = message
@@ -224,11 +228,11 @@ class ComfyHeadlessError(Exception):
         return msg
 
     @property
-    def suggestions(self) -> List[str]:
+    def suggestions(self) -> list[str]:
         """Get recovery suggestions."""
         return self._suggestions or self._default_suggestions
 
-    def get_message(self, verbosity: Optional[VerbosityLevel] = None) -> str:
+    def get_message(self, verbosity: VerbosityLevel | None = None) -> str:
         """
         Get message appropriate for the verbosity level.
 
@@ -259,7 +263,7 @@ class ComfyHeadlessError(Exception):
         self._suggestions.append(suggestion)
         return self
 
-    def to_dict(self, include_internal: bool = False) -> Dict[str, Any]:
+    def to_dict(self, include_internal: bool = False) -> dict[str, Any]:
         """
         Convert exception to dictionary for JSON serialization.
 
@@ -297,14 +301,17 @@ class ComfyHeadlessError(Exception):
 # CONNECTION ERRORS
 # =============================================================================
 
+
 class ConnectionError(ComfyHeadlessError):
     """Base class for connection-related errors."""
+
     _default_user_message = "Connection failed"
     _default_eli5_message = "Can't connect to the service"
 
 
 class ComfyUIConnectionError(ConnectionError):
     """Failed to connect to ComfyUI."""
+
     _default_user_message = "Unable to connect to ComfyUI"
     _default_eli5_message = "The image generator isn't responding"
     _default_suggestions = [
@@ -314,24 +321,17 @@ class ComfyUIConnectionError(ConnectionError):
     ]
 
     def __init__(
-        self,
-        message: str = "Failed to connect to ComfyUI",
-        url: Optional[str] = None,
-        **kwargs
+        self, message: str = "Failed to connect to ComfyUI", url: str | None = None, **kwargs
     ):
         details = kwargs.pop("details", {})
         if url:
             details["url"] = url
-        super().__init__(
-            message,
-            code="COMFYUI_CONNECTION_ERROR",
-            details=details,
-            **kwargs
-        )
+        super().__init__(message, code="COMFYUI_CONNECTION_ERROR", details=details, **kwargs)
 
 
 class ComfyUIOfflineError(ConnectionError):
     """ComfyUI is not running or unreachable."""
+
     _default_user_message = "ComfyUI is not running"
     _default_eli5_message = "The image generator is turned off"
     _default_suggestions = [
@@ -339,25 +339,16 @@ class ComfyUIOfflineError(ConnectionError):
         "Wait a few seconds and try again",
     ]
 
-    def __init__(
-        self,
-        message: str = "ComfyUI is offline",
-        url: Optional[str] = None,
-        **kwargs
-    ):
+    def __init__(self, message: str = "ComfyUI is offline", url: str | None = None, **kwargs):
         details = kwargs.pop("details", {})
         if url:
             details["url"] = url
-        super().__init__(
-            message,
-            code="COMFYUI_OFFLINE",
-            details=details,
-            **kwargs
-        )
+        super().__init__(message, code="COMFYUI_OFFLINE", details=details, **kwargs)
 
 
 class OllamaConnectionError(ConnectionError):
     """Failed to connect to Ollama."""
+
     _default_user_message = "Unable to connect to Ollama AI"
     _default_eli5_message = "The AI helper isn't responding"
     _default_suggestions = [
@@ -366,32 +357,21 @@ class OllamaConnectionError(ConnectionError):
     ]
 
     def __init__(
-        self,
-        message: str = "Failed to connect to Ollama",
-        url: Optional[str] = None,
-        **kwargs
+        self, message: str = "Failed to connect to Ollama", url: str | None = None, **kwargs
     ):
         details = kwargs.pop("details", {})
         if url:
             details["url"] = url
-        super().__init__(
-            message,
-            code="OLLAMA_CONNECTION_ERROR",
-            details=details,
-            **kwargs
-        )
+        super().__init__(message, code="OLLAMA_CONNECTION_ERROR", details=details, **kwargs)
 
 
 class OllamaOfflineError(ConnectionError):
     """Ollama is not running or unreachable."""
+
     _default_user_message = "Ollama AI is not available"
     _default_eli5_message = "The AI helper is turned off"
 
-    def __init__(
-        self,
-        message: str = "Ollama is offline",
-        **kwargs
-    ):
+    def __init__(self, message: str = "Ollama is offline", **kwargs):
         super().__init__(message, code="OLLAMA_OFFLINE", **kwargs)
 
 
@@ -399,14 +379,17 @@ class OllamaOfflineError(ConnectionError):
 # GENERATION ERRORS
 # =============================================================================
 
+
 class GenerationError(ComfyHeadlessError):
     """Base class for generation-related errors."""
+
     _default_user_message = "Generation failed"
     _default_eli5_message = "Couldn't create the image"
 
 
 class QueueError(GenerationError):
     """Failed to queue a prompt."""
+
     _default_user_message = "Unable to start generation"
     _default_eli5_message = "Couldn't start making the image"
     _default_suggestions = [
@@ -415,10 +398,7 @@ class QueueError(GenerationError):
     ]
 
     def __init__(
-        self,
-        message: str = "Failed to queue prompt",
-        prompt_id: Optional[str] = None,
-        **kwargs
+        self, message: str = "Failed to queue prompt", prompt_id: str | None = None, **kwargs
     ):
         details = kwargs.pop("details", {})
         if prompt_id:
@@ -428,6 +408,7 @@ class QueueError(GenerationError):
 
 class GenerationTimeoutError(GenerationError):
     """Generation timed out."""
+
     _default_user_message = "Generation took too long"
     _default_eli5_message = "Making the image took too long"
     _default_suggestions = [
@@ -439,9 +420,9 @@ class GenerationTimeoutError(GenerationError):
     def __init__(
         self,
         message: str = "Generation timed out",
-        timeout: Optional[float] = None,
-        prompt_id: Optional[str] = None,
-        **kwargs
+        timeout: float | None = None,
+        prompt_id: str | None = None,
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if timeout:
@@ -453,6 +434,7 @@ class GenerationTimeoutError(GenerationError):
 
 class GenerationFailedError(GenerationError):
     """Generation failed with an error."""
+
     _default_user_message = "Generation failed"
     _default_eli5_message = "Something went wrong while making the image"
     _default_suggestions = [
@@ -463,9 +445,9 @@ class GenerationFailedError(GenerationError):
     def __init__(
         self,
         message: str = "Generation failed",
-        comfy_error: Optional[str] = None,
-        prompt_id: Optional[str] = None,
-        **kwargs
+        comfy_error: str | None = None,
+        prompt_id: str | None = None,
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if comfy_error:
@@ -477,14 +459,15 @@ class GenerationFailedError(GenerationError):
 
 class NoOutputError(GenerationError):
     """Generation completed but produced no output."""
+
     _default_user_message = "No image was generated"
     _default_eli5_message = "The image generator finished but didn't make anything"
 
     def __init__(
         self,
         message: str = "Generation produced no output",
-        prompt_id: Optional[str] = None,
-        **kwargs
+        prompt_id: str | None = None,
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if prompt_id:
@@ -496,23 +479,26 @@ class NoOutputError(GenerationError):
 # WORKFLOW ERRORS
 # =============================================================================
 
+
 class WorkflowError(ComfyHeadlessError):
     """Base class for workflow-related errors."""
+
     _default_user_message = "Workflow error"
     _default_eli5_message = "The recipe for making the image has a problem"
 
 
 class WorkflowCompilationError(WorkflowError):
     """Failed to compile a workflow."""
+
     _default_user_message = "Unable to prepare the workflow"
     _default_eli5_message = "Couldn't set up the image recipe"
 
     def __init__(
         self,
         message: str = "Failed to compile workflow",
-        template_id: Optional[str] = None,
-        errors: Optional[list] = None,
-        **kwargs
+        template_id: str | None = None,
+        errors: list | None = None,
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if template_id:
@@ -524,14 +510,12 @@ class WorkflowCompilationError(WorkflowError):
 
 class WorkflowValidationError(WorkflowError):
     """Workflow validation failed."""
+
     _default_user_message = "Workflow settings are invalid"
     _default_eli5_message = "Some of the image settings aren't quite right"
 
     def __init__(
-        self,
-        message: str = "Workflow validation failed",
-        errors: Optional[list] = None,
-        **kwargs
+        self, message: str = "Workflow validation failed", errors: list | None = None, **kwargs
     ):
         details = kwargs.pop("details", {})
         if errors:
@@ -541,15 +525,11 @@ class WorkflowValidationError(WorkflowError):
 
 class TemplateNotFoundError(WorkflowError):
     """Requested workflow template not found."""
+
     _default_user_message = "Template not found"
     _default_eli5_message = "Can't find that image recipe"
 
-    def __init__(
-        self,
-        template_id: str,
-        message: Optional[str] = None,
-        **kwargs
-    ):
+    def __init__(self, template_id: str, message: str | None = None, **kwargs):
         msg = message or f"Template not found: {template_id}"
         details = kwargs.pop("details", {})
         details["template_id"] = template_id
@@ -558,15 +538,11 @@ class TemplateNotFoundError(WorkflowError):
 
 class MissingParameterError(WorkflowError):
     """Required parameter is missing."""
+
     _default_user_message = "Missing required setting"
     _default_eli5_message = "You forgot to fill in something important"
 
-    def __init__(
-        self,
-        parameter: str,
-        message: Optional[str] = None,
-        **kwargs
-    ):
+    def __init__(self, parameter: str, message: str | None = None, **kwargs):
         msg = message or f"Missing required parameter: {parameter}"
         details = kwargs.pop("details", {})
         details["parameter"] = parameter
@@ -577,14 +553,17 @@ class MissingParameterError(WorkflowError):
 # VALIDATION ERRORS
 # =============================================================================
 
+
 class ValidationError(ComfyHeadlessError):
     """Base class for validation errors."""
+
     _default_user_message = "Invalid input"
     _default_eli5_message = "Something you entered isn't quite right"
 
 
 class InvalidPromptError(ValidationError):
     """Prompt is invalid or empty."""
+
     _default_user_message = "Please enter a valid prompt"
     _default_eli5_message = "You need to describe what image you want"
     _default_suggestions = [
@@ -592,11 +571,7 @@ class InvalidPromptError(ValidationError):
         "Example: 'a sunset over mountains'",
     ]
 
-    def __init__(
-        self,
-        message: str = "Invalid or empty prompt",
-        **kwargs
-    ):
+    def __init__(self, message: str = "Invalid or empty prompt", **kwargs):
         super().__init__(message, code="INVALID_PROMPT", **kwargs)
 
 
@@ -607,9 +582,9 @@ class InvalidParameterError(ValidationError):
         self,
         parameter: str,
         value: Any,
-        reason: Optional[str] = None,
-        allowed_values: Optional[List] = None,
-        **kwargs
+        reason: str | None = None,
+        allowed_values: list | None = None,
+        **kwargs,
     ):
         msg = f"Invalid value for '{parameter}': {value}"
         if reason:
@@ -628,16 +603,13 @@ class InvalidParameterError(ValidationError):
             user_msg += f". Choose from: {', '.join(str(v) for v in allowed_values[:5])}"
 
         super().__init__(
-            msg,
-            code="INVALID_PARAMETER",
-            user_message=user_msg,
-            details=details,
-            **kwargs
+            msg, code="INVALID_PARAMETER", user_message=user_msg, details=details, **kwargs
         )
 
 
 class DimensionError(ValidationError):
     """Image/video dimensions are invalid."""
+
     _default_user_message = "Invalid image size"
     _default_eli5_message = "The image size isn't right"
     _default_suggestions = [
@@ -645,13 +617,7 @@ class DimensionError(ValidationError):
         "Try standard sizes: 512x512, 1024x1024",
     ]
 
-    def __init__(
-        self,
-        width: int,
-        height: int,
-        reason: Optional[str] = None,
-        **kwargs
-    ):
+    def __init__(self, width: int, height: int, reason: str | None = None, **kwargs):
         msg = f"Invalid dimensions: {width}x{height}"
         if reason:
             msg += f" ({reason})"
@@ -665,14 +631,11 @@ class DimensionError(ValidationError):
 
 class SecurityError(ValidationError):
     """Security-related validation failure."""
+
     _default_user_message = "Security check failed"
     _default_eli5_message = "That's not allowed for safety reasons"
 
-    def __init__(
-        self,
-        message: str = "Security validation failed",
-        **kwargs
-    ):
+    def __init__(self, message: str = "Security validation failed", **kwargs):
         super().__init__(message, code="SECURITY_ERROR", level=ErrorLevel.WARNING, **kwargs)
 
 
@@ -680,14 +643,17 @@ class SecurityError(ValidationError):
 # RESOURCE ERRORS
 # =============================================================================
 
+
 class ResourceError(ComfyHeadlessError):
     """Base class for resource-related errors."""
+
     _default_user_message = "Resource unavailable"
     _default_eli5_message = "Something we need isn't available"
 
 
 class ModelNotFoundError(ResourceError):
     """Requested model not found."""
+
     _default_user_message = "Model not available"
     _default_eli5_message = "The AI model we need isn't installed"
     _default_suggestions = [
@@ -695,12 +661,7 @@ class ModelNotFoundError(ResourceError):
         "Download the model from HuggingFace or CivitAI",
     ]
 
-    def __init__(
-        self,
-        model_name: str,
-        model_type: str = "checkpoint",
-        **kwargs
-    ):
+    def __init__(self, model_name: str, model_type: str = "checkpoint", **kwargs):
         msg = f"{model_type.capitalize()} not found: {model_name}"
         details = kwargs.pop("details", {})
         details["model_name"] = model_name
@@ -710,6 +671,7 @@ class ModelNotFoundError(ResourceError):
 
 class InsufficientVRAMError(ResourceError):
     """Not enough VRAM for the operation."""
+
     _default_user_message = "Not enough GPU memory"
     _default_eli5_message = "Your computer doesn't have enough power for this"
     _default_suggestions = [
@@ -718,12 +680,7 @@ class InsufficientVRAMError(ResourceError):
         "Close other GPU-intensive applications",
     ]
 
-    def __init__(
-        self,
-        required_gb: float,
-        available_gb: Optional[float] = None,
-        **kwargs
-    ):
+    def __init__(self, required_gb: float, available_gb: float | None = None, **kwargs):
         msg = f"Insufficient VRAM: requires {required_gb:.1f}GB"
         if available_gb is not None:
             msg += f", available {available_gb:.1f}GB"
@@ -736,14 +693,11 @@ class InsufficientVRAMError(ResourceError):
 
 class FileNotFoundResourceError(ResourceError):
     """File not found. (Named to avoid shadowing builtin FileNotFoundError)"""
+
     _default_user_message = "File not found"
     _default_eli5_message = "Can't find that file"
 
-    def __init__(
-        self,
-        filepath: str,
-        **kwargs
-    ):
+    def __init__(self, filepath: str, **kwargs):
         msg = f"File not found: {filepath}"
         details = kwargs.pop("details", {})
         details["filepath"] = filepath
@@ -758,14 +712,17 @@ ResourceFileNotFoundError = FileNotFoundResourceError
 # RESILIENCE ERRORS
 # =============================================================================
 
+
 class ResilienceError(ComfyHeadlessError):
     """Base class for resilience-related errors."""
+
     _default_user_message = "Service temporarily unavailable"
     _default_eli5_message = "The service is having trouble right now"
 
 
 class RetryExhaustedError(ResilienceError):
     """All retry attempts exhausted."""
+
     _default_user_message = "Operation failed after multiple attempts"
     _default_eli5_message = "We tried several times but it didn't work"
     _default_suggestions = [
@@ -776,18 +733,21 @@ class RetryExhaustedError(ResilienceError):
     def __init__(
         self,
         message: str = "All retry attempts exhausted",
-        attempts: Optional[int] = None,
-        last_error: Optional[Exception] = None,
-        **kwargs
+        attempts: int | None = None,
+        last_error: Exception | None = None,
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if attempts:
             details["attempts"] = attempts
-        super().__init__(message, code="RETRY_EXHAUSTED", details=details, cause=last_error, **kwargs)
+        super().__init__(
+            message, code="RETRY_EXHAUSTED", details=details, cause=last_error, **kwargs
+        )
 
 
 class CircuitOpenError(ResilienceError):
     """Circuit breaker is open, requests blocked."""
+
     _default_user_message = "Service temporarily blocked for safety"
     _default_eli5_message = "We're giving the service a break because it wasn't working"
     _default_suggestions = [
@@ -795,12 +755,7 @@ class CircuitOpenError(ResilienceError):
         "The service may be overloaded or down",
     ]
 
-    def __init__(
-        self,
-        service: str,
-        message: Optional[str] = None,
-        **kwargs
-    ):
+    def __init__(self, service: str, message: str | None = None, **kwargs):
         msg = message or f"Circuit breaker open for {service}"
         details = kwargs.pop("details", {})
         details["service"] = service
@@ -812,6 +767,7 @@ class CircuitOpenError(ResilienceError):
 # =============================================================================
 
 if EXCEPTION_GROUPS_AVAILABLE:
+
     class ComfyHeadlessExceptionGroup(ExceptionGroup):
         """
         Group of related exceptions (e.g., multiple validation errors).
@@ -827,16 +783,16 @@ if EXCEPTION_GROUPS_AVAILABLE:
                 raise ComfyHeadlessExceptionGroup("Validation failed", errors)
         """
 
-        def __new__(cls, message: str, exceptions: List[ComfyHeadlessError]):
+        def __new__(cls, message: str, exceptions: list[ComfyHeadlessError]):
             return super().__new__(cls, message, exceptions)
 
         @property
-        def user_messages(self) -> List[str]:
+        def user_messages(self) -> list[str]:
             """Get all user-friendly messages."""
             return [e.user_message for e in self.exceptions if isinstance(e, ComfyHeadlessError)]
 
         @property
-        def all_suggestions(self) -> List[str]:
+        def all_suggestions(self) -> list[str]:
             """Get all recovery suggestions (deduplicated)."""
             suggestions = []
             for e in self.exceptions:
@@ -851,17 +807,17 @@ else:
     class ComfyHeadlessExceptionGroup(ComfyHeadlessError):
         """Fallback exception group for Python < 3.11."""
 
-        def __init__(self, message: str, exceptions: List[ComfyHeadlessError]):
+        def __init__(self, message: str, exceptions: list[ComfyHeadlessError]):
             self.exceptions = exceptions
             details = {"exception_count": len(exceptions)}
             super().__init__(message, code="EXCEPTION_GROUP", details=details)
 
         @property
-        def user_messages(self) -> List[str]:
+        def user_messages(self) -> list[str]:
             return [e.user_message for e in self.exceptions if isinstance(e, ComfyHeadlessError)]
 
         @property
-        def all_suggestions(self) -> List[str]:
+        def all_suggestions(self) -> list[str]:
             suggestions = []
             for e in self.exceptions:
                 if isinstance(e, ComfyHeadlessError):
@@ -874,6 +830,7 @@ else:
 # =============================================================================
 # RESULT CLASS (for structured returns instead of exceptions)
 # =============================================================================
+
 
 class Result:
     """
@@ -890,11 +847,7 @@ class Result:
             print(result.error.user_message)
     """
 
-    def __init__(
-        self,
-        value: Any = None,
-        error: Optional[ComfyHeadlessError] = None
-    ):
+    def __init__(self, value: Any = None, error: ComfyHeadlessError | None = None):
         self._value = value
         self._error = error
 
@@ -916,7 +869,7 @@ class Result:
         return self._value
 
     @property
-    def error(self) -> Optional[ComfyHeadlessError]:
+    def error(self) -> ComfyHeadlessError | None:
         """Get the error if any."""
         return self._error
 
@@ -942,7 +895,7 @@ class Result:
             fn(self._error)
         return self
 
-    def to_dict(self, include_internal: bool = False) -> Dict[str, Any]:
+    def to_dict(self, include_internal: bool = False) -> dict[str, Any]:
         """Convert to dictionary."""
         if self.ok:
             return {"success": True, "value": self._value}
@@ -983,10 +936,8 @@ class Result:
 # UTILITY FUNCTIONS
 # =============================================================================
 
-def format_error_for_user(
-    error: Exception,
-    verbosity: Optional[VerbosityLevel] = None
-) -> str:
+
+def format_error_for_user(error: Exception, verbosity: VerbosityLevel | None = None) -> str:
     """
     Format any exception for user display.
 
@@ -1011,7 +962,7 @@ def format_error_for_user(
         return f"{type(error).__name__}: {error}"
 
 
-def collect_suggestions(error: Exception) -> List[str]:
+def collect_suggestions(error: Exception) -> list[str]:
     """Collect all recovery suggestions from an exception."""
     if isinstance(error, ComfyHeadlessError):
         return error.suggestions

@@ -9,11 +9,10 @@ Covers:
 - Timeout utilities
 """
 
-import pytest
-import time
 import asyncio
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timedelta
+import time
+
+import pytest
 
 
 class TestRetryWithBackoff:
@@ -55,8 +54,8 @@ class TestRetryWithBackoff:
 
     def test_retry_exhausted_raises(self):
         """All retries exhausted raises RetryExhaustedError."""
-        from comfy_headless.retry import retry_with_backoff
         from comfy_headless.exceptions import RetryExhaustedError
+        from comfy_headless.retry import retry_with_backoff
 
         @retry_with_backoff(max_attempts=2, backoff_base=0.01, jitter=False)
         def always_fail():
@@ -105,10 +104,7 @@ class TestRetryOnException:
         """retry_on_exception succeeds when function works."""
         from comfy_headless.retry import retry_on_exception
 
-        result = retry_on_exception(
-            lambda: "success",
-            max_attempts=3
-        )
+        result = retry_on_exception(lambda: "success", max_attempts=3)
         assert result == "success"
 
     def test_retry_on_exception_with_failures(self):
@@ -124,25 +120,19 @@ class TestRetryOnException:
             return "success"
 
         result = retry_on_exception(
-            fail_twice,
-            max_attempts=3,
-            exceptions=ConnectionError,
-            backoff_base=0.01,
-            jitter=False
+            fail_twice, max_attempts=3, exceptions=ConnectionError, backoff_base=0.01, jitter=False
         )
         assert result == "success"
         assert counter["count"] == 3
 
     def test_retry_on_exception_exhausted(self):
         """retry_on_exception raises after all attempts."""
-        from comfy_headless.retry import retry_on_exception
         from comfy_headless.exceptions import RetryExhaustedError
+        from comfy_headless.retry import retry_on_exception
 
         with pytest.raises(RetryExhaustedError):
             retry_on_exception(
-                lambda: (_ for _ in ()).throw(ValueError("fail")),
-                max_attempts=2,
-                backoff_base=0.01
+                lambda: (_ for _ in ()).throw(ValueError("fail")), max_attempts=2, backoff_base=0.01
             )
 
 
@@ -206,10 +196,7 @@ class TestCircuitBreakerStates:
         from comfy_headless.retry import CircuitBreaker, CircuitState
 
         breaker = CircuitBreaker(
-            name="test",
-            failure_threshold=1,
-            reset_timeout=0.01,
-            success_threshold=2
+            name="test", failure_threshold=1, reset_timeout=0.01, success_threshold=2
         )
         breaker.record_failure()
         time.sleep(0.02)  # Transition to half-open
@@ -270,23 +257,21 @@ class TestCircuitBreakerContextManager:
 
         breaker = CircuitBreaker(name="test", failure_threshold=2)
 
-        with pytest.raises(ValueError):
-            with breaker:
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), breaker:
+            raise ValueError("Test error")
 
         assert breaker._failure_count == 1
 
     def test_context_manager_raises_when_open(self):
         """Context manager raises CircuitOpenError when open."""
-        from comfy_headless.retry import CircuitBreaker
         from comfy_headless.exceptions import CircuitOpenError
+        from comfy_headless.retry import CircuitBreaker
 
         breaker = CircuitBreaker(name="test", failure_threshold=1)
         breaker.record_failure()
 
-        with pytest.raises(CircuitOpenError):
-            with breaker:
-                pass
+        with pytest.raises(CircuitOpenError), breaker:
+            pass
 
 
 class TestCircuitBreakerAsyncContextManager:
@@ -393,7 +378,7 @@ class TestGlobalCircuitRegistry:
 
     def test_get_circuit_breaker(self):
         """get_circuit_breaker uses global registry."""
-        from comfy_headless.retry import get_circuit_breaker, circuit_registry
+        from comfy_headless.retry import circuit_registry, get_circuit_breaker
 
         breaker = get_circuit_breaker("test_service")
         assert breaker is circuit_registry.get("test_service")
@@ -491,7 +476,7 @@ class TestTimeoutDecorator:
 
     def test_timeout_raises_on_slow_function(self):
         """Slow functions raise OperationTimeoutError."""
-        from comfy_headless.retry import with_timeout, OperationTimeoutError
+        from comfy_headless.retry import OperationTimeoutError, with_timeout
 
         @with_timeout(0.05)
         def slow_func():
@@ -521,7 +506,7 @@ class TestAsyncTimeout:
     @pytest.mark.asyncio
     async def test_async_timeout_raises_on_slow(self):
         """Slow async functions raise OperationTimeoutError."""
-        from comfy_headless.retry import async_timeout, OperationTimeoutError
+        from comfy_headless.retry import OperationTimeoutError, async_timeout
 
         @async_timeout(0.05)
         async def slow_async():
@@ -568,7 +553,7 @@ class TestRetryAsync:
     @pytest.mark.asyncio
     async def test_retry_async_exhausted(self):
         """Async retry raises after exhaustion."""
-        from comfy_headless.retry import retry_async, TENACITY_AVAILABLE
+        from comfy_headless.retry import retry_async
 
         @retry_async(max_attempts=2, backoff_base=0.01, jitter=False)
         async def always_fail_async():
@@ -594,6 +579,7 @@ class TestTenacityAvailable:
 
         try:
             import tenacity
+
             assert TENACITY_AVAILABLE is True
         except ImportError:
             assert TENACITY_AVAILABLE is False
@@ -604,8 +590,9 @@ class TestCircuitBreakerThreadSafety:
 
     def test_concurrent_failures(self):
         """Circuit breaker handles concurrent failures safely."""
-        from comfy_headless.retry import CircuitBreaker, CircuitState
         import threading
+
+        from comfy_headless.retry import CircuitBreaker, CircuitState
 
         breaker = CircuitBreaker(name="test", failure_threshold=100)
         errors = []
@@ -628,15 +615,16 @@ class TestCircuitBreakerThreadSafety:
 
     def test_concurrent_successes(self):
         """Circuit breaker handles concurrent successes safely (no deadlocks/crashes)."""
-        from comfy_headless.retry import CircuitBreaker, CircuitState
         import threading
+
+        from comfy_headless.retry import CircuitBreaker, CircuitState
 
         # Test that concurrent success recording doesn't crash or deadlock
         breaker = CircuitBreaker(
             name="test_concurrent_success",
             failure_threshold=5,
             reset_timeout=1.0,  # Long timeout so it stays closed
-            success_threshold=3
+            success_threshold=3,
         )
 
         errors = []
@@ -672,13 +660,13 @@ class TestBackoffCalculation:
 
         backoffs = []
         for attempt in range(1, 6):
-            backoff = min(base ** attempt, max_backoff)
+            backoff = min(base**attempt, max_backoff)
             backoffs.append(backoff)
 
         # Each backoff should be larger than previous (until max)
         for i in range(1, len(backoffs)):
-            if backoffs[i-1] < max_backoff:
-                assert backoffs[i] > backoffs[i-1]
+            if backoffs[i - 1] < max_backoff:
+                assert backoffs[i] > backoffs[i - 1]
 
     def test_backoff_capped_at_max(self):
         """Backoff doesn't exceed max value."""
@@ -686,5 +674,5 @@ class TestBackoffCalculation:
         max_backoff = 10.0
 
         for attempt in range(1, 20):
-            backoff = min(base ** attempt, max_backoff)
+            backoff = min(base**attempt, max_backoff)
             assert backoff <= max_backoff

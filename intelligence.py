@@ -22,20 +22,18 @@ v2.4.0 Enhancements (2026 Best Practices):
 - Structured input/output (JSON mode)
 """
 
-import re
-import json
 import hashlib
+import json
+import re
 import time
-import httpx
-from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
-from enum import Enum
-from functools import lru_cache
+from typing import Any
+
+import httpx
 
 from .config import settings
 from .logging_config import get_logger
 from .retry import get_circuit_breaker
-from .exceptions import OllamaConnectionError, OllamaOfflineError
 
 logger = get_logger(__name__)
 
@@ -68,27 +66,28 @@ __all__ = [
 # SECURITY: Prompt Sanitization
 # =============================================================================
 
+
 def sanitize_prompt(prompt: str, max_length: int = 2000) -> str:
     """Sanitize user prompt to prevent injection attacks."""
     if not prompt:
         return ""
 
     prompt = prompt[:max_length]
-    prompt = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', prompt)
+    prompt = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", prompt)
 
     # Filter potential injection patterns
     injection_patterns = [
-        r'(?i)ignore\s+(previous|all|above)\s+instructions?',
-        r'(?i)system\s*:\s*',
-        r'(?i)assistant\s*:\s*',
-        r'(?i)user\s*:\s*',
-        r'(?i)<\|.*?\|>',
-        r'(?i)\[INST\]',
-        r'(?i)\[/INST\]',
+        r"(?i)ignore\s+(previous|all|above)\s+instructions?",
+        r"(?i)system\s*:\s*",
+        r"(?i)assistant\s*:\s*",
+        r"(?i)user\s*:\s*",
+        r"(?i)<\|.*?\|>",
+        r"(?i)\[INST\]",
+        r"(?i)\[/INST\]",
     ]
 
     for pattern in injection_patterns:
-        prompt = re.sub(pattern, '', prompt)
+        prompt = re.sub(pattern, "", prompt)
 
     return prompt.strip()
 
@@ -97,13 +96,15 @@ def sanitize_prompt(prompt: str, max_length: int = 2000) -> str:
 # DATA CLASSES
 # =============================================================================
 
+
 @dataclass
 class PromptAnalysis:
     """Result of analyzing a user prompt."""
+
     original: str
     intent: str = "general"
-    subjects: List[str] = field(default_factory=list)
-    styles: List[str] = field(default_factory=list)
+    subjects: list[str] = field(default_factory=list)
+    styles: list[str] = field(default_factory=list)
     mood: str = "neutral"
     complexity: float = 0.5
     suggested_aspect: str = "square"
@@ -115,10 +116,11 @@ class PromptAnalysis:
 @dataclass
 class EnhancedPrompt:
     """Result of enhancing a prompt."""
+
     original: str
     enhanced: str
     negative: str
-    additions: List[str] = field(default_factory=list)
+    additions: list[str] = field(default_factory=list)
     reasoning: str = ""
     # v2.4: Added versioning support
     version: str = "1.0.0"
@@ -129,6 +131,7 @@ class EnhancedPrompt:
 # =============================================================================
 # PROMPT CACHING (2026 Best Practice: LRU with OrderedDict)
 # =============================================================================
+
 
 class PromptCache:
     """
@@ -146,15 +149,16 @@ class PromptCache:
         self.ttl_seconds = ttl_seconds
         # Use OrderedDict for O(1) LRU eviction
         from collections import OrderedDict
-        self._analysis_cache: OrderedDict[str, Tuple[PromptAnalysis, float]] = OrderedDict()
-        self._enhancement_cache: OrderedDict[str, Tuple[EnhancedPrompt, float]] = OrderedDict()
+
+        self._analysis_cache: OrderedDict[str, tuple[PromptAnalysis, float]] = OrderedDict()
+        self._enhancement_cache: OrderedDict[str, tuple[EnhancedPrompt, float]] = OrderedDict()
 
     def _hash_prompt(self, prompt: str, style: str = "") -> str:
         """Create cache key from prompt."""
         content = f"{prompt.lower().strip()}:{style}"
         return hashlib.md5(content.encode()).hexdigest()[:12]
 
-    def get_analysis(self, prompt: str) -> Optional[PromptAnalysis]:
+    def get_analysis(self, prompt: str) -> PromptAnalysis | None:
         """Get cached analysis if valid."""
         key = self._hash_prompt(prompt)
         if key not in self._analysis_cache:
@@ -177,7 +181,7 @@ class PromptCache:
         self._analysis_cache[key] = (analysis, time.time())
         self._analysis_cache.move_to_end(key)
 
-    def get_enhancement(self, prompt: str, style: str) -> Optional[EnhancedPrompt]:
+    def get_enhancement(self, prompt: str, style: str) -> EnhancedPrompt | None:
         """Get cached enhancement if valid."""
         key = self._hash_prompt(prompt, style)
         if key not in self._enhancement_cache:
@@ -218,7 +222,7 @@ class PromptCache:
         self._analysis_cache.clear()
         self._enhancement_cache.clear()
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         return {
             "analysis_entries": len(self._analysis_cache),
@@ -241,6 +245,7 @@ def get_prompt_cache() -> PromptCache:
 # PROMPT VERSIONING AND A/B TESTING (2026 Best Practice)
 # =============================================================================
 
+
 @dataclass
 class PromptVersion:
     """
@@ -248,14 +253,15 @@ class PromptVersion:
 
     Supports comparing different enhancement strategies.
     """
+
     id: str
     prompt: str
     version: str
     variant: str  # e.g., "A", "B", "control"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "prompt": self.prompt,
@@ -277,7 +283,7 @@ class PromptABTester:
         result = tester.get_variant(prompt)  # Returns "A" or "B"
     """
 
-    def __init__(self, traffic_split: Dict[str, float] = None):
+    def __init__(self, traffic_split: dict[str, float] = None):
         """
         Initialize A/B tester.
 
@@ -285,8 +291,8 @@ class PromptABTester:
             traffic_split: e.g., {"A": 0.9, "B": 0.1} for 90/10 split
         """
         self.traffic_split = traffic_split or {"A": 0.5, "B": 0.5}
-        self._variants: Dict[str, Any] = {}
-        self._results: List[Dict[str, Any]] = []
+        self._variants: dict[str, Any] = {}
+        self._results: list[dict[str, Any]] = []
 
     def register_variant(self, name: str, enhancer: Any):
         """Register an enhancement variant."""
@@ -311,22 +317,20 @@ class PromptABTester:
         return list(self.traffic_split.keys())[0]
 
     def record_result(
-        self,
-        prompt: str,
-        variant: str,
-        success: bool,
-        metrics: Dict[str, Any] = None
+        self, prompt: str, variant: str, success: bool, metrics: dict[str, Any] = None
     ):
         """Record A/B test result for analysis."""
-        self._results.append({
-            "prompt_hash": hashlib.md5(prompt.encode()).hexdigest()[:8],
-            "variant": variant,
-            "success": success,
-            "metrics": metrics or {},
-            "timestamp": time.time(),
-        })
+        self._results.append(
+            {
+                "prompt_hash": hashlib.md5(prompt.encode()).hexdigest()[:8],
+                "variant": variant,
+                "success": success,
+                "metrics": metrics or {},
+                "timestamp": time.time(),
+            }
+        )
 
-    def get_results_summary(self) -> Dict[str, Any]:
+    def get_results_summary(self) -> dict[str, Any]:
         """Get summary of A/B test results."""
         summary = {}
         for variant in self.traffic_split:
@@ -351,29 +355,28 @@ FEW_SHOT_ENHANCEMENT_EXAMPLES = [
     {
         "input": "a cat",
         "output": "a fluffy orange cat with bright green eyes, sitting gracefully, soft natural lighting, highly detailed fur texture, professional pet photography",
-        "style": "detailed"
+        "style": "detailed",
     },
     {
         "input": "sunset",
         "output": "a breathtaking golden sunset over calm ocean waters, dramatic clouds with orange and purple hues, god rays breaking through, cinematic composition, 8k photography",
-        "style": "detailed"
+        "style": "detailed",
     },
     {
         "input": "portrait of a woman",
         "output": "portrait of an elegant woman, soft rembrandt lighting, detailed skin texture, expressive eyes, shallow depth of field, professional studio photography",
-        "style": "balanced"
+        "style": "balanced",
     },
     {
         "input": "cyberpunk city",
         "output": "neon-lit cyberpunk cityscape at night, rain-slicked streets, holographic advertisements, towering skyscrapers, cinematic atmosphere, blade runner style",
-        "style": "creative"
+        "style": "creative",
     },
 ]
 
 
-def _load_custom_few_shot_examples() -> List[Dict[str, str]]:
+def _load_custom_few_shot_examples() -> list[dict[str, str]]:
     """Load custom few-shot examples from config path if specified."""
-    import json
     from pathlib import Path
 
     path = settings.ollama.few_shot_examples_path
@@ -383,7 +386,7 @@ def _load_custom_few_shot_examples() -> List[Dict[str, str]]:
     try:
         p = Path(path)
         if p.exists():
-            with p.open('r', encoding='utf-8') as f:
+            with p.open("r", encoding="utf-8") as f:
                 examples = json.load(f)
                 if isinstance(examples, list):
                     logger.debug(f"Loaded {len(examples)} custom few-shot examples from {path}")
@@ -395,10 +398,10 @@ def _load_custom_few_shot_examples() -> List[Dict[str, str]]:
 
 
 # Cache for custom examples
-_custom_few_shot_examples: Optional[List[Dict[str, str]]] = None
+_custom_few_shot_examples: list[dict[str, str]] | None = None
 
 
-def get_few_shot_examples() -> List[Dict[str, str]]:
+def get_few_shot_examples() -> list[dict[str, str]]:
     """Get all few-shot examples (custom + built-in)."""
     global _custom_few_shot_examples
     if _custom_few_shot_examples is None:
@@ -451,53 +454,241 @@ Output only the enhanced prompt on the last line."""
 
 INTENT_KEYWORDS = {
     "portrait": [
-        "portrait", "face", "headshot", "person", "man", "woman", "girl", "boy",
-        "character", "bust", "close-up", "closeup", "selfie", "profile", "model",
-        "beauty", "mugshot", "id photo", "passport", "professional photo",
-        "actor", "actress", "celebrity", "influencer", "eyes", "lips"
+        "portrait",
+        "face",
+        "headshot",
+        "person",
+        "man",
+        "woman",
+        "girl",
+        "boy",
+        "character",
+        "bust",
+        "close-up",
+        "closeup",
+        "selfie",
+        "profile",
+        "model",
+        "beauty",
+        "mugshot",
+        "id photo",
+        "passport",
+        "professional photo",
+        "actor",
+        "actress",
+        "celebrity",
+        "influencer",
+        "eyes",
+        "lips",
     ],
     "landscape": [
-        "landscape", "scenery", "vista", "panorama", "mountain", "forest", "ocean",
-        "beach", "city", "cityscape", "skyline", "nature", "outdoor", "environment",
-        "horizon", "valley", "desert", "jungle", "countryside", "field", "meadow",
-        "river", "lake", "waterfall", "sunset", "sunrise", "night sky", "aurora"
+        "landscape",
+        "scenery",
+        "vista",
+        "panorama",
+        "mountain",
+        "forest",
+        "ocean",
+        "beach",
+        "city",
+        "cityscape",
+        "skyline",
+        "nature",
+        "outdoor",
+        "environment",
+        "horizon",
+        "valley",
+        "desert",
+        "jungle",
+        "countryside",
+        "field",
+        "meadow",
+        "river",
+        "lake",
+        "waterfall",
+        "sunset",
+        "sunrise",
+        "night sky",
+        "aurora",
     ],
     "character": [
-        "character", "warrior", "knight", "wizard", "mage", "hero", "villain",
-        "anime", "manga", "fantasy", "rpg", "game character", "oc", "original character",
-        "adventurer", "paladin", "rogue", "assassin", "samurai", "ninja", "pirate",
-        "soldier", "commander", "princess", "prince", "queen", "king", "elf", "dwarf",
-        "full body", "standing", "action pose", "dynamic pose"
+        "character",
+        "warrior",
+        "knight",
+        "wizard",
+        "mage",
+        "hero",
+        "villain",
+        "anime",
+        "manga",
+        "fantasy",
+        "rpg",
+        "game character",
+        "oc",
+        "original character",
+        "adventurer",
+        "paladin",
+        "rogue",
+        "assassin",
+        "samurai",
+        "ninja",
+        "pirate",
+        "soldier",
+        "commander",
+        "princess",
+        "prince",
+        "queen",
+        "king",
+        "elf",
+        "dwarf",
+        "full body",
+        "standing",
+        "action pose",
+        "dynamic pose",
     ],
     "scene": [
-        "scene", "action", "battle", "fight", "dancing", "walking", "sitting",
-        "standing", "running", "flying", "dramatic", "epic", "moment", "event",
-        "celebration", "ceremony", "meeting", "conversation", "chase", "escape",
-        "exploration", "discovery", "journey", "quest", "confrontation", "duel"
+        "scene",
+        "action",
+        "battle",
+        "fight",
+        "dancing",
+        "walking",
+        "sitting",
+        "standing",
+        "running",
+        "flying",
+        "dramatic",
+        "epic",
+        "moment",
+        "event",
+        "celebration",
+        "ceremony",
+        "meeting",
+        "conversation",
+        "chase",
+        "escape",
+        "exploration",
+        "discovery",
+        "journey",
+        "quest",
+        "confrontation",
+        "duel",
     ],
     "object": [
-        "product", "item", "object", "food", "car", "vehicle", "weapon", "sword",
-        "still life", "macro", "detail", "jewelry", "watch", "phone", "gadget",
-        "furniture", "clothing", "fashion", "accessory", "tool", "instrument",
-        "bottle", "glass", "cup", "plate", "book", "flower", "plant", "fruit"
+        "product",
+        "item",
+        "object",
+        "food",
+        "car",
+        "vehicle",
+        "weapon",
+        "sword",
+        "still life",
+        "macro",
+        "detail",
+        "jewelry",
+        "watch",
+        "phone",
+        "gadget",
+        "furniture",
+        "clothing",
+        "fashion",
+        "accessory",
+        "tool",
+        "instrument",
+        "bottle",
+        "glass",
+        "cup",
+        "plate",
+        "book",
+        "flower",
+        "plant",
+        "fruit",
     ],
     "abstract": [
-        "abstract", "pattern", "texture", "fractal", "geometric", "surreal",
-        "psychedelic", "trippy", "dream", "concept", "symbolic", "metaphor",
-        "kaleidoscope", "mandala", "spiral", "wave", "flow", "energy", "aura",
-        "vortex", "portal", "dimension", "cosmic", "infinite", "void"
+        "abstract",
+        "pattern",
+        "texture",
+        "fractal",
+        "geometric",
+        "surreal",
+        "psychedelic",
+        "trippy",
+        "dream",
+        "concept",
+        "symbolic",
+        "metaphor",
+        "kaleidoscope",
+        "mandala",
+        "spiral",
+        "wave",
+        "flow",
+        "energy",
+        "aura",
+        "vortex",
+        "portal",
+        "dimension",
+        "cosmic",
+        "infinite",
+        "void",
     ],
     "architecture": [
-        "building", "architecture", "interior", "room", "house", "castle",
-        "temple", "church", "modern", "ancient", "ruins", "palace", "mansion",
-        "skyscraper", "tower", "bridge", "monument", "statue", "cathedral",
-        "mosque", "pagoda", "fortress", "bunker", "station", "airport"
+        "building",
+        "architecture",
+        "interior",
+        "room",
+        "house",
+        "castle",
+        "temple",
+        "church",
+        "modern",
+        "ancient",
+        "ruins",
+        "palace",
+        "mansion",
+        "skyscraper",
+        "tower",
+        "bridge",
+        "monument",
+        "statue",
+        "cathedral",
+        "mosque",
+        "pagoda",
+        "fortress",
+        "bunker",
+        "station",
+        "airport",
     ],
     "creature": [
-        "creature", "monster", "beast", "animal", "dragon", "phoenix", "unicorn",
-        "griffin", "hydra", "kraken", "leviathan", "chimera", "cerberus", "pegasus",
-        "dinosaur", "alien", "mutant", "kaiju", "titan", "colossus", "golem",
-        "cat", "dog", "wolf", "lion", "tiger", "bear", "bird", "eagle"
+        "creature",
+        "monster",
+        "beast",
+        "animal",
+        "dragon",
+        "phoenix",
+        "unicorn",
+        "griffin",
+        "hydra",
+        "kraken",
+        "leviathan",
+        "chimera",
+        "cerberus",
+        "pegasus",
+        "dinosaur",
+        "alien",
+        "mutant",
+        "kaiju",
+        "titan",
+        "colossus",
+        "golem",
+        "cat",
+        "dog",
+        "wolf",
+        "lion",
+        "tiger",
+        "bear",
+        "bird",
+        "eagle",
     ],
 }
 
@@ -508,57 +699,224 @@ INTENT_KEYWORDS = {
 
 STYLE_KEYWORDS = {
     "photorealistic": [
-        "photo", "photograph", "photorealistic", "realistic", "real", "raw",
-        "dslr", "canon", "nikon", "sony", "35mm", "85mm", "50mm", "camera", "lens",
-        "f/1.4", "f/2.8", "bokeh", "depth of field", "dof", "sharp", "crisp",
-        "natural lighting", "studio lighting", "flash", "softbox", "reflector"
+        "photo",
+        "photograph",
+        "photorealistic",
+        "realistic",
+        "real",
+        "raw",
+        "dslr",
+        "canon",
+        "nikon",
+        "sony",
+        "35mm",
+        "85mm",
+        "50mm",
+        "camera",
+        "lens",
+        "f/1.4",
+        "f/2.8",
+        "bokeh",
+        "depth of field",
+        "dof",
+        "sharp",
+        "crisp",
+        "natural lighting",
+        "studio lighting",
+        "flash",
+        "softbox",
+        "reflector",
     ],
     "anime": [
-        "anime", "manga", "waifu", "kawaii", "chibi", "cel shaded", "2d",
-        "japanese", "light novel", "visual novel", "ghibli", "makoto shinkai",
-        "kyoto animation", "trigger", "ufotable", "mappa", "wit studio",
-        "shonen", "shoujo", "seinen", "isekai", "slice of life", "moe"
+        "anime",
+        "manga",
+        "waifu",
+        "kawaii",
+        "chibi",
+        "cel shaded",
+        "2d",
+        "japanese",
+        "light novel",
+        "visual novel",
+        "ghibli",
+        "makoto shinkai",
+        "kyoto animation",
+        "trigger",
+        "ufotable",
+        "mappa",
+        "wit studio",
+        "shonen",
+        "shoujo",
+        "seinen",
+        "isekai",
+        "slice of life",
+        "moe",
     ],
     "artistic": [
-        "painting", "oil painting", "watercolor", "acrylic", "impressionist",
-        "expressionist", "art nouveau", "baroque", "renaissance", "classical",
-        "van gogh", "monet", "rembrandt", "picasso", "dali", "klimt", "mucha",
-        "gouache", "pastel", "charcoal", "sketch", "drawing", "illustration"
+        "painting",
+        "oil painting",
+        "watercolor",
+        "acrylic",
+        "impressionist",
+        "expressionist",
+        "art nouveau",
+        "baroque",
+        "renaissance",
+        "classical",
+        "van gogh",
+        "monet",
+        "rembrandt",
+        "picasso",
+        "dali",
+        "klimt",
+        "mucha",
+        "gouache",
+        "pastel",
+        "charcoal",
+        "sketch",
+        "drawing",
+        "illustration",
     ],
     "digital_art": [
-        "digital art", "cg", "3d render", "blender", "unreal engine", "octane",
-        "ray tracing", "artstation", "deviantart", "concept art", "keyshot",
-        "vray", "cinema 4d", "maya", "zbrush", "substance painter", "houdini",
-        "cgi", "vfx", "matte painting", "environment art", "character design"
+        "digital art",
+        "cg",
+        "3d render",
+        "blender",
+        "unreal engine",
+        "octane",
+        "ray tracing",
+        "artstation",
+        "deviantart",
+        "concept art",
+        "keyshot",
+        "vray",
+        "cinema 4d",
+        "maya",
+        "zbrush",
+        "substance painter",
+        "houdini",
+        "cgi",
+        "vfx",
+        "matte painting",
+        "environment art",
+        "character design",
     ],
     "cinematic": [
-        "cinematic", "movie", "film", "hollywood", "dramatic lighting",
-        "volumetric", "atmospheric", "moody", "epic", "blockbuster", "imax",
-        "anamorphic", "widescreen", "film grain", "color grading", "lut",
-        "cinematography", "director", "movie still", "film still"
+        "cinematic",
+        "movie",
+        "film",
+        "hollywood",
+        "dramatic lighting",
+        "volumetric",
+        "atmospheric",
+        "moody",
+        "epic",
+        "blockbuster",
+        "imax",
+        "anamorphic",
+        "widescreen",
+        "film grain",
+        "color grading",
+        "lut",
+        "cinematography",
+        "director",
+        "movie still",
+        "film still",
     ],
     "fantasy": [
-        "fantasy", "magical", "mystical", "ethereal", "enchanted", "fairy tale",
-        "mythology", "dragon", "elf", "dwarf", "tolkien", "dungeons and dragons",
-        "world of warcraft", "elder scrolls", "dark souls", "witcher", "lotr",
-        "hogwarts", "narnia", "middle earth", "fae", "faerie", "mythical"
+        "fantasy",
+        "magical",
+        "mystical",
+        "ethereal",
+        "enchanted",
+        "fairy tale",
+        "mythology",
+        "dragon",
+        "elf",
+        "dwarf",
+        "tolkien",
+        "dungeons and dragons",
+        "world of warcraft",
+        "elder scrolls",
+        "dark souls",
+        "witcher",
+        "lotr",
+        "hogwarts",
+        "narnia",
+        "middle earth",
+        "fae",
+        "faerie",
+        "mythical",
     ],
     "scifi": [
-        "sci-fi", "scifi", "science fiction", "futuristic", "cyberpunk",
-        "steampunk", "dieselpunk", "solarpunk", "biopunk", "space", "alien",
-        "robot", "mech", "android", "cyborg", "neon", "hologram", "laser",
-        "star wars", "star trek", "blade runner", "ghost in the shell", "akira"
+        "sci-fi",
+        "scifi",
+        "science fiction",
+        "futuristic",
+        "cyberpunk",
+        "steampunk",
+        "dieselpunk",
+        "solarpunk",
+        "biopunk",
+        "space",
+        "alien",
+        "robot",
+        "mech",
+        "android",
+        "cyborg",
+        "neon",
+        "hologram",
+        "laser",
+        "star wars",
+        "star trek",
+        "blade runner",
+        "ghost in the shell",
+        "akira",
     ],
     "horror": [
-        "horror", "dark", "gothic", "creepy", "scary", "nightmare", "grim",
-        "sinister", "ominous", "evil", "demon", "zombie", "ghost", "spirit",
-        "haunted", "cursed", "occult", "lovecraft", "eldritch", "cosmic horror",
-        "body horror", "psychological horror", "slasher", "gore", "blood"
+        "horror",
+        "dark",
+        "gothic",
+        "creepy",
+        "scary",
+        "nightmare",
+        "grim",
+        "sinister",
+        "ominous",
+        "evil",
+        "demon",
+        "zombie",
+        "ghost",
+        "spirit",
+        "haunted",
+        "cursed",
+        "occult",
+        "lovecraft",
+        "eldritch",
+        "cosmic horror",
+        "body horror",
+        "psychological horror",
+        "slasher",
+        "gore",
+        "blood",
     ],
     "minimalist": [
-        "minimalist", "minimal", "simple", "clean", "modern", "sleek",
-        "geometric", "flat", "negative space", "white space", "swiss design",
-        "bauhaus", "scandinavian", "japanese", "zen", "muji"
+        "minimalist",
+        "minimal",
+        "simple",
+        "clean",
+        "modern",
+        "sleek",
+        "geometric",
+        "flat",
+        "negative space",
+        "white space",
+        "swiss design",
+        "bauhaus",
+        "scandinavian",
+        "japanese",
+        "zen",
+        "muji",
     ],
 }
 
@@ -568,16 +926,85 @@ STYLE_KEYWORDS = {
 # =============================================================================
 
 MOOD_KEYWORDS = {
-    "dramatic": ["dramatic", "intense", "powerful", "epic", "grand", "majestic", "imposing", "striking"],
-    "peaceful": ["peaceful", "calm", "serene", "tranquil", "relaxing", "gentle", "soothing", "quiet"],
-    "dark": ["dark", "moody", "ominous", "sinister", "gloomy", "mysterious", "shadowy", "foreboding"],
+    "dramatic": [
+        "dramatic",
+        "intense",
+        "powerful",
+        "epic",
+        "grand",
+        "majestic",
+        "imposing",
+        "striking",
+    ],
+    "peaceful": [
+        "peaceful",
+        "calm",
+        "serene",
+        "tranquil",
+        "relaxing",
+        "gentle",
+        "soothing",
+        "quiet",
+    ],
+    "dark": [
+        "dark",
+        "moody",
+        "ominous",
+        "sinister",
+        "gloomy",
+        "mysterious",
+        "shadowy",
+        "foreboding",
+    ],
     "bright": ["bright", "cheerful", "happy", "joyful", "vibrant", "lively", "colorful", "sunny"],
-    "romantic": ["romantic", "love", "passionate", "intimate", "tender", "soft", "sensual", "amorous"],
-    "melancholic": ["melancholic", "sad", "lonely", "nostalgic", "wistful", "bittersweet", "somber"],
-    "energetic": ["energetic", "dynamic", "action", "motion", "fast", "explosive", "intense", "powerful"],
-    "ethereal": ["ethereal", "dreamy", "mystical", "otherworldly", "magical", "surreal", "heavenly"],
+    "romantic": [
+        "romantic",
+        "love",
+        "passionate",
+        "intimate",
+        "tender",
+        "soft",
+        "sensual",
+        "amorous",
+    ],
+    "melancholic": [
+        "melancholic",
+        "sad",
+        "lonely",
+        "nostalgic",
+        "wistful",
+        "bittersweet",
+        "somber",
+    ],
+    "energetic": [
+        "energetic",
+        "dynamic",
+        "action",
+        "motion",
+        "fast",
+        "explosive",
+        "intense",
+        "powerful",
+    ],
+    "ethereal": [
+        "ethereal",
+        "dreamy",
+        "mystical",
+        "otherworldly",
+        "magical",
+        "surreal",
+        "heavenly",
+    ],
     "cozy": ["cozy", "warm", "comfortable", "homey", "snug", "inviting", "intimate", "rustic"],
-    "epic": ["epic", "legendary", "heroic", "monumental", "grandiose", "spectacular", "awe-inspiring"],
+    "epic": [
+        "epic",
+        "legendary",
+        "heroic",
+        "monumental",
+        "grandiose",
+        "spectacular",
+        "awe-inspiring",
+    ],
 }
 
 
@@ -587,36 +1014,80 @@ MOOD_KEYWORDS = {
 
 STYLE_QUALITY_BOOSTERS = {
     "photorealistic": [
-        "8k uhd", "hyperrealistic", "photorealism", "ultra detailed photograph",
-        "professional photography", "award winning photo", "national geographic"
+        "8k uhd",
+        "hyperrealistic",
+        "photorealism",
+        "ultra detailed photograph",
+        "professional photography",
+        "award winning photo",
+        "national geographic",
     ],
     "anime": [
-        "best quality anime", "detailed anime art", "beautiful anime style",
-        "key visual", "official art", "clean lineart", "vibrant colors"
+        "best quality anime",
+        "detailed anime art",
+        "beautiful anime style",
+        "key visual",
+        "official art",
+        "clean lineart",
+        "vibrant colors",
     ],
     "artistic": [
-        "masterpiece painting", "museum quality", "fine art", "exhibition piece",
-        "gallery artwork", "traditional media", "brush strokes visible"
+        "masterpiece painting",
+        "museum quality",
+        "fine art",
+        "exhibition piece",
+        "gallery artwork",
+        "traditional media",
+        "brush strokes visible",
     ],
     "digital_art": [
-        "trending on artstation", "cgsociety", "8k render", "unreal engine 5",
-        "octane render", "ray traced", "global illumination", "subsurface scattering"
+        "trending on artstation",
+        "cgsociety",
+        "8k render",
+        "unreal engine 5",
+        "octane render",
+        "ray traced",
+        "global illumination",
+        "subsurface scattering",
     ],
     "cinematic": [
-        "cinematic lighting", "film still", "movie scene", "dramatic composition",
-        "volumetric lighting", "god rays", "lens flare", "motion blur"
+        "cinematic lighting",
+        "film still",
+        "movie scene",
+        "dramatic composition",
+        "volumetric lighting",
+        "god rays",
+        "lens flare",
+        "motion blur",
     ],
     "fantasy": [
-        "epic fantasy art", "magic atmosphere", "enchanted", "mythical",
-        "legendary", "ancient magic", "mystical aura", "fantasy illustration"
+        "epic fantasy art",
+        "magic atmosphere",
+        "enchanted",
+        "mythical",
+        "legendary",
+        "ancient magic",
+        "mystical aura",
+        "fantasy illustration",
     ],
     "scifi": [
-        "sci-fi concept art", "futuristic design", "advanced technology",
-        "cybernetic", "neon lights", "holographic", "chrome", "metallic"
+        "sci-fi concept art",
+        "futuristic design",
+        "advanced technology",
+        "cybernetic",
+        "neon lights",
+        "holographic",
+        "chrome",
+        "metallic",
     ],
     "horror": [
-        "unsettling atmosphere", "creepy lighting", "dark shadows",
-        "ominous presence", "eerie fog", "nightmare fuel", "disturbing"
+        "unsettling atmosphere",
+        "creepy lighting",
+        "dark shadows",
+        "ominous presence",
+        "eerie fog",
+        "nightmare fuel",
+        "disturbing",
     ],
 }
 
@@ -627,36 +1098,100 @@ STYLE_QUALITY_BOOSTERS = {
 
 STYLE_NEGATIVES = {
     "photorealistic": [
-        "cartoon", "anime", "illustration", "painting", "drawing", "sketch",
-        "cgi", "3d render", "digital art", "artistic", "stylized", "unrealistic"
+        "cartoon",
+        "anime",
+        "illustration",
+        "painting",
+        "drawing",
+        "sketch",
+        "cgi",
+        "3d render",
+        "digital art",
+        "artistic",
+        "stylized",
+        "unrealistic",
     ],
     "anime": [
-        "realistic", "photorealistic", "3d", "photograph", "western",
-        "disney", "pixar", "dreamworks", "uncanny valley", "hyperrealistic"
+        "realistic",
+        "photorealistic",
+        "3d",
+        "photograph",
+        "western",
+        "disney",
+        "pixar",
+        "dreamworks",
+        "uncanny valley",
+        "hyperrealistic",
     ],
     "artistic": [
-        "photorealistic", "photograph", "3d render", "cgi", "digital",
-        "modern", "minimalist", "flat design", "vector", "clipart"
+        "photorealistic",
+        "photograph",
+        "3d render",
+        "cgi",
+        "digital",
+        "modern",
+        "minimalist",
+        "flat design",
+        "vector",
+        "clipart",
     ],
     "digital_art": [
-        "traditional media", "oil painting", "watercolor", "sketch",
-        "pencil", "charcoal", "crayon", "pastel", "messy", "rough"
+        "traditional media",
+        "oil painting",
+        "watercolor",
+        "sketch",
+        "pencil",
+        "charcoal",
+        "crayon",
+        "pastel",
+        "messy",
+        "rough",
     ],
     "cinematic": [
-        "amateur", "home video", "low budget", "tv show", "sitcom",
-        "documentary", "news footage", "security camera", "webcam"
+        "amateur",
+        "home video",
+        "low budget",
+        "tv show",
+        "sitcom",
+        "documentary",
+        "news footage",
+        "security camera",
+        "webcam",
     ],
     "fantasy": [
-        "modern", "contemporary", "realistic", "mundane", "ordinary",
-        "scientific", "technological", "urban", "industrial"
+        "modern",
+        "contemporary",
+        "realistic",
+        "mundane",
+        "ordinary",
+        "scientific",
+        "technological",
+        "urban",
+        "industrial",
     ],
     "scifi": [
-        "medieval", "ancient", "primitive", "magical", "fantasy",
-        "steampunk", "low tech", "organic", "natural", "rustic"
+        "medieval",
+        "ancient",
+        "primitive",
+        "magical",
+        "fantasy",
+        "steampunk",
+        "low tech",
+        "organic",
+        "natural",
+        "rustic",
     ],
     "horror": [
-        "cheerful", "happy", "bright", "colorful", "cute", "kawaii",
-        "wholesome", "family friendly", "cartoonish", "comedic"
+        "cheerful",
+        "happy",
+        "bright",
+        "colorful",
+        "cute",
+        "kawaii",
+        "wholesome",
+        "family friendly",
+        "cartoonish",
+        "comedic",
     ],
 }
 
@@ -666,23 +1201,50 @@ STYLE_NEGATIVES = {
 # =============================================================================
 
 NEGATIVE_DEFAULTS = [
-    "ugly", "blurry", "low quality", "distorted", "deformed", "disfigured",
-    "bad anatomy", "watermark", "signature", "text", "error", "cropped",
-    "worst quality", "low resolution", "jpeg artifacts", "duplicate",
-    "mutated", "out of frame", "extra limbs", "cloned face",
-    "poorly drawn", "malformed", "missing limbs", "floating limbs"
+    "ugly",
+    "blurry",
+    "low quality",
+    "distorted",
+    "deformed",
+    "disfigured",
+    "bad anatomy",
+    "watermark",
+    "signature",
+    "text",
+    "error",
+    "cropped",
+    "worst quality",
+    "low resolution",
+    "jpeg artifacts",
+    "duplicate",
+    "mutated",
+    "out of frame",
+    "extra limbs",
+    "cloned face",
+    "poorly drawn",
+    "malformed",
+    "missing limbs",
+    "floating limbs",
 ]
 
 QUALITY_BOOSTERS = [
-    "masterpiece", "best quality", "highly detailed", "sharp focus",
-    "professional", "stunning", "beautiful", "intricate details",
-    "ultra detailed", "high resolution"
+    "masterpiece",
+    "best quality",
+    "highly detailed",
+    "sharp focus",
+    "professional",
+    "stunning",
+    "beautiful",
+    "intricate details",
+    "ultra detailed",
+    "high resolution",
 ]
 
 
 # =============================================================================
 # PROMPT INTELLIGENCE ENGINE
 # =============================================================================
+
 
 class PromptIntelligence:
     """
@@ -700,15 +1262,15 @@ class PromptIntelligence:
 
     def __init__(
         self,
-        ollama_url: Optional[str] = None,
-        model: Optional[str] = None,
+        ollama_url: str | None = None,
+        model: str | None = None,
         use_cache: bool = True,
         use_few_shot: bool = False,  # v2.5: Default to False for concise output
-        verbose: bool = False  # v2.5: New flag for verbose AI responses
+        verbose: bool = False,  # v2.5: New flag for verbose AI responses
     ):
         self.ollama_url = ollama_url or settings.ollama.url
         self.model = model or settings.ollama.model
-        self._client: Optional[httpx.Client] = None
+        self._client: httpx.Client | None = None
         self._circuit = get_circuit_breaker("ollama")
         # v2.4: Caching and few-shot support
         self.use_cache = use_cache
@@ -717,8 +1279,8 @@ class PromptIntelligence:
         self._cache = get_prompt_cache()
 
         logger.debug(
-            f"PromptIntelligence initialized",
-            extra={"ollama_url": self.ollama_url, "model": self.model}
+            "PromptIntelligence initialized",
+            extra={"ollama_url": self.ollama_url, "model": self.model},
         )
 
     def _get_client(self) -> httpx.Client:
@@ -729,18 +1291,14 @@ class PromptIntelligence:
                     connect=settings.ollama.timeout_connect,
                     read=settings.ollama.timeout_enhancement,
                     write=10.0,
-                    pool=5.0
+                    pool=5.0,
                 )
             )
         return self._client
 
     def _ollama_request_with_retry(
-        self,
-        endpoint: str,
-        json_data: dict,
-        timeout: float = None,
-        max_retries: int = 3
-    ) -> Optional[dict]:
+        self, endpoint: str, json_data: dict, timeout: float = None, max_retries: int = 3
+    ) -> dict | None:
         """
         Make an Ollama API request with retry logic.
 
@@ -764,7 +1322,7 @@ class PromptIntelligence:
             max_attempts=max_retries,
             backoff_base=1.0,
             backoff_max=10.0,
-            exceptions=(httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout)
+            exceptions=(httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout),
         )
         def _do_request():
             client = self._get_client()
@@ -795,10 +1353,7 @@ class PromptIntelligence:
         """Check if Ollama is available."""
         try:
             client = self._get_client()
-            r = client.get(
-                f"{self.ollama_url}/api/tags",
-                timeout=settings.ollama.timeout_connect
-            )
+            r = client.get(f"{self.ollama_url}/api/tags", timeout=settings.ollama.timeout_connect)
             return r.status_code == 200
         except Exception as e:
             logger.debug(f"Ollama check failed: {e}")
@@ -841,11 +1396,9 @@ class PromptIntelligence:
             if score > 0:
                 style_scores[style] = score
 
-        detected_styles = sorted(
-            style_scores.keys(),
-            key=lambda s: style_scores[s],
-            reverse=True
-        )[:3]
+        detected_styles = sorted(style_scores.keys(), key=lambda s: style_scores[s], reverse=True)[
+            :3
+        ]
 
         # Detect mood
         mood_scores = {}
@@ -873,14 +1426,20 @@ class PromptIntelligence:
         word_count = len(prompt.split())
         has_quality = any(q in prompt_lower for q in QUALITY_BOOSTERS)
         has_style = len(detected_styles) > 0
-        complexity = min(1.0, (word_count / 30) * (1.5 if has_quality else 1.0) * (1.2 if has_style else 1.0))
+        complexity = min(
+            1.0, (word_count / 30) * (1.5 if has_quality else 1.0) * (1.2 if has_style else 1.0)
+        )
 
         # Confidence
-        total_matches = sum(intent_scores.values()) + sum(style_scores.values()) + sum(mood_scores.values())
+        total_matches = (
+            sum(intent_scores.values()) + sum(style_scores.values()) + sum(mood_scores.values())
+        )
         confidence = min(0.85, 0.4 + (total_matches * 0.05))
 
         # Suggest workflow and preset
-        suggested_workflow, suggested_preset = self._suggest_workflow(intent, detected_styles, complexity)
+        suggested_workflow, suggested_preset = self._suggest_workflow(
+            intent, detected_styles, complexity
+        )
 
         analysis = PromptAnalysis(
             original=prompt,
@@ -892,7 +1451,7 @@ class PromptIntelligence:
             suggested_aspect=suggested_aspect,
             suggested_workflow=suggested_workflow,
             suggested_preset=suggested_preset,
-            confidence=confidence
+            confidence=confidence,
         )
 
         # v2.4: Cache the result
@@ -901,16 +1460,36 @@ class PromptIntelligence:
 
         return analysis
 
-    def _extract_subjects(self, prompt: str) -> List[str]:
+    def _extract_subjects(self, prompt: str) -> list[str]:
         """Extract likely subjects from prompt."""
         subjects = []
         skip_words = {
-            "a", "an", "the", "with", "and", "or", "in", "on", "at", "by",
-            "highly", "detailed", "quality", "best", "beautiful", "stunning",
-            "masterpiece", "realistic", "style", "art", "artwork", "of", "is"
+            "a",
+            "an",
+            "the",
+            "with",
+            "and",
+            "or",
+            "in",
+            "on",
+            "at",
+            "by",
+            "highly",
+            "detailed",
+            "quality",
+            "best",
+            "beautiful",
+            "stunning",
+            "masterpiece",
+            "realistic",
+            "style",
+            "art",
+            "artwork",
+            "of",
+            "is",
         }
 
-        words = re.findall(r'\b[a-zA-Z]+\b', prompt.lower())
+        words = re.findall(r"\b[a-zA-Z]+\b", prompt.lower())
         seen = set()
 
         for word in words:
@@ -924,11 +1503,8 @@ class PromptIntelligence:
         return subjects[:5]
 
     def _suggest_workflow(
-        self,
-        intent: str,
-        styles: List[str],
-        complexity: float
-    ) -> Tuple[str, str]:
+        self, intent: str, styles: list[str], complexity: float
+    ) -> tuple[str, str]:
         """Suggest workflow and preset based on analysis."""
         workflow = "txt2img_standard"
         preset = "quality"
@@ -960,8 +1536,8 @@ class PromptIntelligence:
         self,
         prompt: str,
         style: str = "balanced",
-        analysis: Optional[PromptAnalysis] = None,
-        skip_cache: bool = False
+        analysis: PromptAnalysis | None = None,
+        skip_cache: bool = False,
     ) -> EnhancedPrompt:
         """
         Enhance a prompt with quality terms and style-specific additions.
@@ -1004,20 +1580,28 @@ class PromptIntelligence:
 
         return result
 
-    def _enhance_prompt(
-        self,
-        prompt: str,
-        style: str,
-        analysis: PromptAnalysis
-    ) -> str:
+    def _enhance_prompt(self, prompt: str, style: str, analysis: PromptAnalysis) -> str:
         """Enhance the prompt based on style preference."""
 
         # Base style additions
         style_additions = {
             "minimal": [],
             "balanced": ["highly detailed", "professional quality"],
-            "detailed": ["masterpiece", "best quality", "highly detailed", "intricate details", "sharp focus", "8k"],
-            "creative": ["artistic", "creative composition", "beautiful lighting", "aesthetic", "expressive"],
+            "detailed": [
+                "masterpiece",
+                "best quality",
+                "highly detailed",
+                "intricate details",
+                "sharp focus",
+                "8k",
+            ],
+            "creative": [
+                "artistic",
+                "creative composition",
+                "beautiful lighting",
+                "aesthetic",
+                "expressive",
+            ],
         }
 
         additions = list(style_additions.get(style, style_additions["balanced"]))
@@ -1030,13 +1614,38 @@ class PromptIntelligence:
         # Intent-specific additions
         intent_additions = {
             "portrait": ["beautiful lighting", "detailed face", "expressive eyes", "skin texture"],
-            "landscape": ["scenic vista", "atmospheric perspective", "natural lighting", "majestic scale"],
+            "landscape": [
+                "scenic vista",
+                "atmospheric perspective",
+                "natural lighting",
+                "majestic scale",
+            ],
             "character": ["full body shot", "dynamic pose", "detailed costume", "character design"],
-            "scene": ["cinematic composition", "dramatic lighting", "storytelling", "environmental detail"],
-            "object": ["studio lighting", "product photography", "clean background", "sharp details"],
+            "scene": [
+                "cinematic composition",
+                "dramatic lighting",
+                "storytelling",
+                "environmental detail",
+            ],
+            "object": [
+                "studio lighting",
+                "product photography",
+                "clean background",
+                "sharp details",
+            ],
             "architecture": ["architectural photography", "symmetrical composition", "grand scale"],
-            "creature": ["creature design", "anatomical detail", "texture detail", "menacing presence"],
-            "abstract": ["artistic interpretation", "color harmony", "visual flow", "conceptual depth"],
+            "creature": [
+                "creature design",
+                "anatomical detail",
+                "texture detail",
+                "menacing presence",
+            ],
+            "abstract": [
+                "artistic interpretation",
+                "color harmony",
+                "visual flow",
+                "conceptual depth",
+            ],
         }
 
         if analysis.intent in intent_additions:
@@ -1066,18 +1675,11 @@ class PromptIntelligence:
                 unique_additions.append(a)
                 seen.add(a_lower)
 
-        if unique_additions:
-            enhanced = f"{prompt}, {', '.join(unique_additions[:8])}"
-        else:
-            enhanced = prompt
+        enhanced = f"{prompt}, {', '.join(unique_additions[:8])}" if unique_additions else prompt
 
         return enhanced
 
-    def _generate_negative(
-        self,
-        prompt: str,
-        analysis: PromptAnalysis
-    ) -> str:
+    def _generate_negative(self, prompt: str, analysis: PromptAnalysis) -> str:
         """Generate an appropriate negative prompt."""
         negatives = list(NEGATIVE_DEFAULTS)
 
@@ -1088,7 +1690,13 @@ class PromptIntelligence:
 
         # Intent-specific negatives
         intent_negatives = {
-            "portrait": ["bad hands", "missing fingers", "extra fingers", "bad face", "asymmetrical eyes"],
+            "portrait": [
+                "bad hands",
+                "missing fingers",
+                "extra fingers",
+                "bad face",
+                "asymmetrical eyes",
+            ],
             "landscape": ["people", "person", "human", "text", "words", "letters", "watermark"],
             "character": ["bad anatomy", "wrong proportions", "missing limbs", "extra limbs"],
             "object": ["background clutter", "distracting elements", "text", "watermark"],
@@ -1108,10 +1716,10 @@ class PromptIntelligence:
 
         return ", ".join(unique_negatives[:25])
 
-    def _diff_prompts(self, original: str, enhanced: str) -> List[str]:
+    def _diff_prompts(self, original: str, enhanced: str) -> list[str]:
         """Find what was added during enhancement."""
-        original_terms = set(t.strip().lower() for t in original.split(","))
-        enhanced_terms = set(t.strip().lower() for t in enhanced.split(","))
+        original_terms = {t.strip().lower() for t in original.split(",")}
+        enhanced_terms = {t.strip().lower() for t in enhanced.split(",")}
         additions = enhanced_terms - original_terms
         return [a for a in additions if a]
 
@@ -1124,8 +1732,8 @@ class PromptIntelligence:
         prompt: str,
         enhancement_style: str = "balanced",
         use_few_shot: bool = None,
-        use_chain_of_thought: bool = False
-    ) -> Tuple[str, str, str]:
+        use_chain_of_thought: bool = False,
+    ) -> tuple[str, str, str]:
         """
         AI-powered prompt enhancement using Ollama.
 
@@ -1191,10 +1799,13 @@ Output ONLY the enhanced prompt, nothing else. Keep under 300 total characters."
                 "prompt": user_prompt,
                 "system": system_prompt,
                 "stream": False,
-                "options": {"temperature": 0.7, "num_predict": 300 if use_chain_of_thought else 200}
+                "options": {
+                    "temperature": 0.7,
+                    "num_predict": 300 if use_chain_of_thought else 200,
+                },
             },
             timeout=settings.ollama.timeout_enhancement,
-            max_retries=settings.retry.max_retries
+            max_retries=settings.retry.max_retries,
         )
 
         if response_data:
@@ -1204,13 +1815,13 @@ Output ONLY the enhanced prompt, nothing else. Keep under 300 total characters."
             if use_chain_of_thought and "\n" in enhanced:
                 enhanced = enhanced.strip().split("\n")[-1]
 
-            enhanced = enhanced.strip('"\'')
+            enhanced = enhanced.strip("\"'")
 
             # v2.5: Enforce character limit (300 chars max)
             if len(enhanced) > 300:
                 # Truncate at last comma before limit to keep clean formatting
                 truncated = enhanced[:300]
-                last_comma = truncated.rfind(',')
+                last_comma = truncated.rfind(",")
                 if last_comma > len(prompt):  # Keep at least original
                     enhanced = truncated[:last_comma]
                 else:
@@ -1222,12 +1833,14 @@ Output ONLY the enhanced prompt, nothing else. Keep under 300 total characters."
             negative = self._generate_negative(prompt, analysis)
 
             added_words = len(enhanced.split()) - len(prompt.split())
-            mode = "CoT" if use_chain_of_thought else ("few-shot" if should_use_few_shot else "basic")
+            mode = (
+                "CoT" if use_chain_of_thought else ("few-shot" if should_use_few_shot else "basic")
+            )
             info = f"Added ~{added_words} words | Style: {enhancement_style} | Mode: {mode}"
 
             logger.debug(
-                f"AI enhancement complete",
-                extra={"style": enhancement_style, "added_words": added_words, "mode": mode}
+                "AI enhancement complete",
+                extra={"style": enhancement_style, "added_words": added_words, "mode": mode},
             )
 
             return enhanced, negative, info
@@ -1257,10 +1870,10 @@ Output ONLY the enhanced prompt, nothing else. Keep under 300 total characters."
                 "prompt": f"In exactly 2 lines, analyze this image prompt. Line 1: detected style/genre. Line 2: suggested improvements (brief).\n\nPrompt: {safe_prompt}",
                 "system": "You analyze image generation prompts. Be extremely concise - max 2 short lines.",
                 "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 80}
+                "options": {"temperature": 0.3, "num_predict": 80},
             },
             timeout=settings.ollama.timeout_analysis,
-            max_retries=2  # Faster timeout for analysis
+            max_retries=2,  # Faster timeout for analysis
         )
 
         if response_data:
@@ -1272,7 +1885,7 @@ Output ONLY the enhanced prompt, nothing else. Keep under 300 total characters."
         analysis = self.analyze_keywords(prompt)
         return f"**Intent**: {analysis.intent}\n**Styles**: {', '.join(analysis.styles) or 'general'}\n**Mood**: {analysis.mood}\n**Suggested**: {analysis.suggested_preset} preset"
 
-    def generate_variations(self, prompt: str, count: int = 4) -> List[str]:
+    def generate_variations(self, prompt: str, count: int = 4) -> list[str]:
         """Generate prompt variations with retry support."""
         fallback_variations = [
             f"{prompt}, golden hour lighting",
@@ -1295,17 +1908,17 @@ Output ONLY the enhanced prompt, nothing else. Keep under 300 total characters."
                 "prompt": f"Generate {count} variations of this image prompt. Vary: perspective, lighting, mood. One per line, numbered.\n\nOriginal: {safe_prompt}",
                 "system": "Generate prompt variations. Output numbered list only, no explanations.",
                 "stream": False,
-                "options": {"temperature": 0.8, "num_predict": 400}
+                "options": {"temperature": 0.8, "num_predict": 400},
             },
             timeout=settings.ollama.timeout_enhancement,
-            max_retries=2
+            max_retries=2,
         )
 
         if response_data:
             text = response_data.get("response", "")
             variations = []
             for line in text.split("\n"):
-                line = re.sub(r'^\d+[\.\)]\s*', '', line.strip())
+                line = re.sub(r"^\d+[\.\)]\s*", "", line.strip())
                 if line and len(line) > 10:
                     variations.append(line)
             logger.debug(f"Generated {len(variations)} variations")
@@ -1318,7 +1931,7 @@ Output ONLY the enhanced prompt, nothing else. Keep under 300 total characters."
 # SINGLETON INSTANCE
 # =============================================================================
 
-_intelligence: Optional[PromptIntelligence] = None
+_intelligence: PromptIntelligence | None = None
 
 
 def get_intelligence() -> PromptIntelligence:
@@ -1333,6 +1946,7 @@ def get_intelligence() -> PromptIntelligence:
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
+
 def analyze_prompt(prompt: str) -> PromptAnalysis:
     """Analyze a prompt and return recommendations."""
     intel = get_intelligence()
@@ -1345,7 +1959,7 @@ def enhance_prompt(prompt: str, style: str = "balanced") -> EnhancedPrompt:
     return intel.enhance(prompt, style)
 
 
-def quick_enhance(prompt: str, style: str = "balanced") -> Tuple[str, str]:
+def quick_enhance(prompt: str, style: str = "balanced") -> tuple[str, str]:
     """Quick enhancement returning (enhanced, negative)."""
     intel = get_intelligence()
     result = intel.enhance(prompt, style)

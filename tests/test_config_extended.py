@@ -10,10 +10,11 @@ Covers:
 - to_dict serialization
 """
 
-import pytest
 import os
-from unittest.mock import patch, MagicMock
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 
 class TestEnvironmentVariableParsing:
@@ -170,7 +171,7 @@ class TestSettingsToDict:
 
     def test_to_dict_includes_nested_configs(self):
         """to_dict includes nested configuration sections."""
-        from comfy_headless.config import Settings, PYDANTIC_SETTINGS_AVAILABLE
+        from comfy_headless.config import PYDANTIC_SETTINGS_AVAILABLE, Settings
 
         s = Settings()
         d = s.to_dict()
@@ -186,7 +187,7 @@ class TestSettingsToDict:
 
     def test_to_dict_comfyui_section(self):
         """to_dict comfyui section has expected keys."""
-        from comfy_headless.config import Settings, PYDANTIC_SETTINGS_AVAILABLE
+        from comfy_headless.config import PYDANTIC_SETTINGS_AVAILABLE, Settings
 
         if not PYDANTIC_SETTINGS_AVAILABLE:
             pytest.skip("Full to_dict only in pydantic mode")
@@ -214,7 +215,7 @@ class TestSettingsCaching:
         """reload_settings creates new instance."""
         from comfy_headless.config import get_settings, reload_settings
 
-        s1 = get_settings()
+        get_settings()
         s2 = reload_settings()
 
         # After reload, should get new instance
@@ -223,7 +224,7 @@ class TestSettingsCaching:
 
     def test_settings_singleton_matches_get_settings(self):
         """Module-level settings matches get_settings."""
-        from comfy_headless.config import settings, get_settings
+        from comfy_headless.config import settings
 
         # Note: settings is evaluated at import time
         # After reload, they may differ, so we just check it exists
@@ -400,6 +401,7 @@ class TestPydanticSettingsAvailable:
 
         try:
             import pydantic_settings
+
             assert PYDANTIC_SETTINGS_AVAILABLE is True
         except ImportError:
             assert PYDANTIC_SETTINGS_AVAILABLE is False
@@ -410,7 +412,7 @@ class TestEnvironmentVariableOverrides:
 
     def test_comfyui_url_from_env(self):
         """COMFY_HEADLESS_COMFYUI__URL overrides default."""
-        from comfy_headless.config import reload_settings, PYDANTIC_SETTINGS_AVAILABLE
+        from comfy_headless.config import PYDANTIC_SETTINGS_AVAILABLE, reload_settings
 
         if not PYDANTIC_SETTINGS_AVAILABLE:
             pytest.skip("Pydantic settings required for env override test")
@@ -418,20 +420,20 @@ class TestEnvironmentVariableOverrides:
         test_url = "http://custom-host:9999"
 
         with patch.dict(os.environ, {"COMFY_HEADLESS_COMFYUI__URL": test_url}):
-            settings = reload_settings()
+            reload_settings()
             # Note: Pydantic might use different delimiter
             # This test verifies the mechanism works
 
     def test_logging_level_from_env(self):
         """COMFY_HEADLESS_LOGGING__LEVEL overrides default."""
-        from comfy_headless.config import reload_settings, PYDANTIC_SETTINGS_AVAILABLE
+        from comfy_headless.config import PYDANTIC_SETTINGS_AVAILABLE, reload_settings
 
         if not PYDANTIC_SETTINGS_AVAILABLE:
             pytest.skip("Pydantic settings required for env override test")
 
         # Just verify no crash with env set
         with patch.dict(os.environ, {"COMFY_HEADLESS_LOGGING__LEVEL": "DEBUG"}):
-            settings = reload_settings()
+            reload_settings()
 
 
 class TestSettingsEdgeCases:

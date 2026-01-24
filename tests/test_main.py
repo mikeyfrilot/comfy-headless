@@ -1,8 +1,5 @@
 """Tests for __main__.py CLI entry point."""
 
-import pytest
-from unittest.mock import patch, MagicMock
-import sys
 
 
 class TestMainArgParsing:
@@ -85,6 +82,7 @@ class TestVersionCommand:
 
         # Verify version string is accessible
         from comfy_headless import __version__
+
         assert __version__ is not None
         assert isinstance(__version__, str)
 
@@ -135,6 +133,7 @@ class TestUILaunch:
         """Test launch function exists when UI feature is available."""
         try:
             from comfy_headless import launch
+
             assert callable(launch)
         except ImportError:
             # UI feature not installed - that's OK
@@ -147,16 +146,19 @@ class TestCLIIntegration:
     def test_module_runnable(self):
         """Test module can be imported without errors."""
         import comfy_headless.__main__
-        assert hasattr(comfy_headless.__main__, 'main')
+
+        assert hasattr(comfy_headless.__main__, "main")
 
     def test_main_is_callable(self):
         """Test main function is callable."""
         from comfy_headless.__main__ import main
+
         assert callable(main)
 
     def test_if_name_main_block(self):
         """Test __name__ == '__main__' block exists."""
         import inspect
+
         import comfy_headless.__main__
 
         source = inspect.getsource(comfy_headless.__main__)

@@ -9,9 +9,8 @@ Covers:
 - Feature listing functions
 """
 
+
 import pytest
-from unittest.mock import patch, MagicMock
-import sys
 
 
 class TestFeatureDetection:
@@ -39,6 +38,7 @@ class TestFeatureDetection:
 
         try:
             import httpx
+
             assert FEATURES["ai"] is True
         except ImportError:
             assert FEATURES["ai"] is False
@@ -49,6 +49,7 @@ class TestFeatureDetection:
 
         try:
             import websockets
+
             assert FEATURES["websocket"] is True
         except ImportError:
             assert FEATURES["websocket"] is False
@@ -59,6 +60,7 @@ class TestFeatureDetection:
 
         try:
             import psutil
+
             assert FEATURES["health"] is True
         except ImportError:
             assert FEATURES["health"] is False
@@ -69,6 +71,7 @@ class TestFeatureDetection:
 
         try:
             import gradio
+
             assert FEATURES["ui"] is True
         except ImportError:
             assert FEATURES["ui"] is False
@@ -80,6 +83,7 @@ class TestFeatureDetection:
         try:
             import pydantic
             import pydantic_settings
+
             assert FEATURES["validation"] is True
         except ImportError:
             assert FEATURES["validation"] is False
@@ -90,6 +94,7 @@ class TestFeatureDetection:
 
         try:
             import opentelemetry
+
             assert FEATURES["observability"] is True
         except ImportError:
             assert FEATURES["observability"] is False
@@ -107,7 +112,7 @@ class TestCheckFeature:
 
     def test_check_feature_known_features(self):
         """check_feature works for all known features."""
-        from comfy_headless.feature_flags import check_feature, FEATURES
+        from comfy_headless.feature_flags import FEATURES, check_feature
 
         for feature in FEATURES:
             result = check_feature(feature)
@@ -163,7 +168,7 @@ class TestListAvailableFeatures:
 
     def test_list_available_features_only_installed(self):
         """list_available_features only includes installed features."""
-        from comfy_headless.feature_flags import list_available_features, FEATURES
+        from comfy_headless.feature_flags import FEATURES, list_available_features
 
         result = list_available_features()
 
@@ -180,7 +185,7 @@ class TestListAvailableFeatures:
 
         result = list_available_features()
 
-        for name, description in result.items():
+        for _name, description in result.items():
             assert isinstance(description, str)
 
 
@@ -196,7 +201,7 @@ class TestListMissingFeatures:
 
     def test_list_missing_features_only_uninstalled(self):
         """list_missing_features only includes missing features."""
-        from comfy_headless.feature_flags import list_missing_features, FEATURES
+        from comfy_headless.feature_flags import FEATURES, list_missing_features
 
         result = list_missing_features()
 
@@ -213,7 +218,7 @@ class TestListMissingFeatures:
 
         result = list_missing_features()
 
-        for name, hint in result.items():
+        for _name, hint in result.items():
             assert isinstance(hint, str)
             assert "pip install" in hint
 
@@ -223,7 +228,7 @@ class TestRequireFeature:
 
     def test_require_feature_allows_when_available(self):
         """require_feature allows function when feature is available."""
-        from comfy_headless.feature_flags import require_feature, FEATURES
+        from comfy_headless.feature_flags import FEATURES, require_feature
 
         # Find an available feature
         available_feature = None
@@ -244,7 +249,7 @@ class TestRequireFeature:
 
     def test_require_feature_raises_when_unavailable(self):
         """require_feature raises ImportError when feature is missing."""
-        from comfy_headless.feature_flags import require_feature, FEATURES
+        from comfy_headless.feature_flags import FEATURES, require_feature
 
         # Find an unavailable feature
         unavailable_feature = None
@@ -280,7 +285,7 @@ class TestRequireFeature:
 
     def test_require_feature_passes_arguments(self):
         """require_feature passes through arguments."""
-        from comfy_headless.feature_flags import require_feature, FEATURES
+        from comfy_headless.feature_flags import FEATURES, require_feature
 
         # Find an available feature
         available_feature = None
@@ -352,7 +357,7 @@ class TestEnsureFeature:
 
     def test_ensure_feature_passes_when_available(self):
         """ensure_feature doesn't raise when feature is available."""
-        from comfy_headless.feature_flags import ensure_feature, FEATURES
+        from comfy_headless.feature_flags import FEATURES, ensure_feature
 
         # Find an available feature
         available_feature = None
@@ -369,7 +374,7 @@ class TestEnsureFeature:
 
     def test_ensure_feature_raises_when_unavailable(self):
         """ensure_feature raises FeatureNotAvailable when missing."""
-        from comfy_headless.feature_flags import ensure_feature, FeatureNotAvailable, FEATURES
+        from comfy_headless.feature_flags import FEATURES, FeatureNotAvailable, ensure_feature
 
         # Find an unavailable feature
         unavailable_feature = None
@@ -417,7 +422,7 @@ class TestInstallHints:
 
     def test_install_hints_complete(self):
         """INSTALL_HINTS has entry for each feature."""
-        from comfy_headless.feature_flags import INSTALL_HINTS, FEATURES
+        from comfy_headless.feature_flags import FEATURES, INSTALL_HINTS
 
         for feature in FEATURES:
             assert feature in INSTALL_HINTS
@@ -484,7 +489,7 @@ class TestEdgeCases:
 
     def test_require_feature_with_kwargs(self):
         """require_feature handles kwargs correctly."""
-        from comfy_headless.feature_flags import require_feature, FEATURES
+        from comfy_headless.feature_flags import FEATURES, require_feature
 
         available_feature = None
         for name, available in FEATURES.items():
@@ -504,7 +509,7 @@ class TestEdgeCases:
 
     def test_require_feature_with_args_and_kwargs(self):
         """require_feature handles mixed args/kwargs."""
-        from comfy_headless.feature_flags import require_feature, FEATURES
+        from comfy_headless.feature_flags import FEATURES, require_feature
 
         available_feature = None
         for name, available in FEATURES.items():

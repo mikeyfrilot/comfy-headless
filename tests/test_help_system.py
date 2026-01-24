@@ -1,8 +1,5 @@
 """Tests for help_system module."""
 
-import pytest
-from unittest.mock import patch
-import os
 
 
 class TestHelpLevel:
@@ -30,7 +27,7 @@ class TestHelpLevelManagement:
 
     def test_set_help_level(self):
         """Test setting help level."""
-        from comfy_headless.help_system import set_help_level, get_help_level, HelpLevel
+        from comfy_headless.help_system import HelpLevel, get_help_level, set_help_level
 
         original = get_help_level()
 
@@ -45,7 +42,7 @@ class TestHelpLevelManagement:
 
     def test_get_help_level_default(self):
         """Test default help level."""
-        from comfy_headless.help_system import get_help_level, HelpLevel
+        from comfy_headless.help_system import HelpLevel, get_help_level
 
         level = get_help_level()
         assert isinstance(level, HelpLevel)
@@ -56,14 +53,14 @@ class TestHelpTopic:
 
     def test_help_topic_creation(self):
         """Test creating HelpTopic."""
-        from comfy_headless.help_system import HelpTopic, HelpLevel
+        from comfy_headless.help_system import HelpTopic
 
         topic = HelpTopic(
             id="test",
             title="Test Topic",
             eli5="Simple explanation",
             casual="Regular explanation",
-            developer="Technical explanation"
+            developer="Technical explanation",
         )
 
         assert topic.id == "test"
@@ -71,49 +68,37 @@ class TestHelpTopic:
 
     def test_help_topic_get_content_eli5(self):
         """Test getting ELI5 content."""
-        from comfy_headless.help_system import HelpTopic, HelpLevel
+        from comfy_headless.help_system import HelpLevel, HelpTopic
 
         topic = HelpTopic(
-            id="test",
-            title="Test",
-            eli5="Simple",
-            casual="Regular",
-            developer="Technical"
+            id="test", title="Test", eli5="Simple", casual="Regular", developer="Technical"
         )
 
         assert topic.get_content(HelpLevel.ELI5) == "Simple"
 
     def test_help_topic_get_content_casual(self):
         """Test getting casual content."""
-        from comfy_headless.help_system import HelpTopic, HelpLevel
+        from comfy_headless.help_system import HelpLevel, HelpTopic
 
         topic = HelpTopic(
-            id="test",
-            title="Test",
-            eli5="Simple",
-            casual="Regular",
-            developer="Technical"
+            id="test", title="Test", eli5="Simple", casual="Regular", developer="Technical"
         )
 
         assert topic.get_content(HelpLevel.CASUAL) == "Regular"
 
     def test_help_topic_get_content_developer(self):
         """Test getting developer content."""
-        from comfy_headless.help_system import HelpTopic, HelpLevel
+        from comfy_headless.help_system import HelpLevel, HelpTopic
 
         topic = HelpTopic(
-            id="test",
-            title="Test",
-            eli5="Simple",
-            casual="Regular",
-            developer="Technical"
+            id="test", title="Test", eli5="Simple", casual="Regular", developer="Technical"
         )
 
         assert topic.get_content(HelpLevel.DEVELOPER) == "Technical"
 
     def test_help_topic_format_full(self):
         """Test full formatting."""
-        from comfy_headless.help_system import HelpTopic, HelpLevel
+        from comfy_headless.help_system import HelpLevel, HelpTopic
 
         topic = HelpTopic(
             id="test",
@@ -121,7 +106,7 @@ class TestHelpTopic:
             eli5="Simple",
             casual="Regular",
             developer="Technical",
-            see_also=["other_topic"]
+            see_also=["other_topic"],
         )
 
         formatted = topic.format_full(HelpLevel.CASUAL)
@@ -132,7 +117,7 @@ class TestHelpTopic:
 
     def test_help_topic_format_with_examples(self):
         """Test formatting with examples."""
-        from comfy_headless.help_system import HelpTopic, HelpLevel
+        from comfy_headless.help_system import HelpLevel, HelpTopic
 
         topic = HelpTopic(
             id="test",
@@ -140,7 +125,7 @@ class TestHelpTopic:
             eli5="Simple",
             casual="Regular",
             developer="Technical",
-            examples=["example_code()"]
+            examples=["example_code()"],
         )
 
         formatted = topic.format_full(HelpLevel.DEVELOPER)
@@ -182,7 +167,7 @@ class TestGetHelp:
 
     def test_get_help_with_level(self):
         """Test getting help at specific level."""
-        from comfy_headless.help_system import get_help, HelpLevel
+        from comfy_headless.help_system import HelpLevel, get_help
 
         help_eli5 = get_help("generation", level=HelpLevel.ELI5)
         help_dev = get_help("generation", level=HelpLevel.DEVELOPER)
@@ -297,23 +282,21 @@ class TestHelpContext:
 
     def test_set_context_operation(self):
         """Test setting context operation."""
-        from comfy_headless.help_system import set_context, _help_context
+        from comfy_headless.help_system import _help_context, set_context
 
         set_context(operation="generation")
         assert _help_context.current_operation == "generation"
 
     def test_set_context_error(self):
         """Test setting context error."""
-        from comfy_headless.help_system import set_context, _help_context
+        from comfy_headless.help_system import _help_context, set_context
 
         set_context(error="COMFYUI_OFFLINE")
         assert _help_context.last_error == "COMFYUI_OFFLINE"
 
     def test_get_contextual_help_with_error(self):
         """Test contextual help returns error help."""
-        from comfy_headless.help_system import (
-            set_context, get_contextual_help, _help_context
-        )
+        from comfy_headless.help_system import _help_context, get_contextual_help, set_context
 
         # Clear and set context
         _help_context.last_error = None
@@ -326,9 +309,7 @@ class TestHelpContext:
 
     def test_get_contextual_help_with_operation(self):
         """Test contextual help returns operation help."""
-        from comfy_headless.help_system import (
-            set_context, get_contextual_help, _help_context
-        )
+        from comfy_headless.help_system import _help_context, get_contextual_help, set_context
 
         # Clear context
         _help_context.last_error = None
@@ -341,7 +322,7 @@ class TestHelpContext:
 
     def test_get_contextual_help_default(self):
         """Test contextual help default."""
-        from comfy_headless.help_system import get_contextual_help, _help_context
+        from comfy_headless.help_system import _help_context, get_contextual_help
 
         # Clear context
         _help_context.last_error = None

@@ -29,22 +29,25 @@ Features:
 import asyncio
 import json
 import uuid
-from typing import Optional, Dict, Any, Callable, Awaitable, List
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from enum import Enum
-import logging
+from typing import Any
 
 try:
     import websockets
     from websockets.asyncio.client import ClientConnection
+
     WEBSOCKETS_AVAILABLE = True
 except ImportError:
     WEBSOCKETS_AVAILABLE = False
     ClientConnection = None
 
+import contextlib
+
 from .config import settings
+from .exceptions import ComfyUIConnectionError
 from .logging_config import get_logger
-from .exceptions import ComfyUIConnectionError, ComfyUIOfflineError
 
 logger = get_logger(__name__)
 
@@ -58,6 +61,7 @@ __all__ = [
 
 class WSMessageType(str, Enum):
     """ComfyUI WebSocket message types."""
+
     STATUS = "status"
     PROGRESS = "progress"
     EXECUTING = "executing"
@@ -72,15 +76,16 @@ class WSMessageType(str, Enum):
 @dataclass
 class WSProgress:
     """Progress information from WebSocket."""
+
     prompt_id: str
-    node_id: Optional[str] = None
-    node_type: Optional[str] = None
+    node_id: str | None = None
+    node_type: str | None = None
     progress: float = 0.0
     max_progress: float = 1.0
     step: int = 0
     total_steps: int = 0
     status: str = "queued"
-    preview_data: Optional[bytes] = None
+    preview_data: bytes | None = None
 
     @property
     def percent(self) -> float:
@@ -127,17 +132,15 @@ class ComfyWSClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        client_id: Optional[str] = None,
+        base_url: str | None = None,
+        client_id: str | None = None,
         reconnect_attempts: int = 3,
         reconnect_delay: float = 1.0,
         *,
-        max_message_size: Optional[int] = None,
+        max_message_size: int | None = None,
     ):
         if not WEBSOCKETS_AVAILABLE:
-            raise ImportError(
-                "websockets package required. Install with: pip install websockets"
-            )
+            raise ImportError("websockets package required. Install with: pip install websockets")
 
         # Convert HTTP URL to WebSocket URL
         http_url = (base_url or settings.comfyui.url).rstrip("/")
@@ -157,7 +160,7 @@ class ComfyWSClient:
                 "WebSocket using unencrypted ws:// protocol. "
                 "Consider using wss:// (HTTPS) for production environments "
                 "to prevent man-in-the-middle attacks.",
-                extra={"ws_url": self.ws_url}
+                extra={"ws_url": self.ws_url},
             )
 
         self.client_id = client_id or str(uuid.uuid4())
@@ -165,10 +168,10 @@ class ComfyWSClient:
         self.reconnect_delay = reconnect_delay
         self.max_message_size = max_message_size or self.DEFAULT_MAX_MESSAGE_SIZE
 
-        self._ws: Optional[ClientConnection] = None
+        self._ws: ClientConnection | None = None
         self._connected = False
-        self._listeners: Dict[str, List[ProgressCallback]] = {}
-        self._message_task: Optional[asyncio.Task] = None
+        self._listeners: dict[str, list[ProgressCallback]] = {}
+        self._message_task: asyncio.Task | None = None
 
         logger.debug("ComfyWSClient initialized", extra={"ws_url": self.ws_url})
 
@@ -200,34 +203,28 @@ class ComfyWSClient:
                 # Start message handler
                 self._message_task = asyncio.create_task(self._message_loop())
 
-                logger.info(
-                    "WebSocket connected",
-                    extra={"client_id": self.client_id[:8]}
-                )
+                logger.info("WebSocket connected", extra={"client_id": self.client_id[:8]})
                 return True
 
             except Exception as e:
-                delay = self.reconnect_delay * (2 ** attempt)
+                delay = self.reconnect_delay * (2**attempt)
                 logger.warning(
                     f"WebSocket connection failed (attempt {attempt + 1})",
-                    extra={"error": str(e), "retry_in": delay}
+                    extra={"error": str(e), "retry_in": delay},
                 )
                 if attempt < self.reconnect_attempts - 1:
                     await asyncio.sleep(delay)
 
         raise ComfyUIConnectionError(
-            message="Failed to connect to ComfyUI WebSocket",
-            url=self.ws_url
+            message="Failed to connect to ComfyUI WebSocket", url=self.ws_url
         )
 
     async def disconnect(self):
         """Disconnect from WebSocket."""
         if self._message_task:
             self._message_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._message_task
-            except asyncio.CancelledError:
-                pass
             self._message_task = None
 
         if self._ws:
@@ -267,11 +264,14 @@ class ComfyWSClient:
             # Binary data is preview image
             # First 4 bytes might be message type, rest is image
             if len(message) > 8:
-                await self._notify_listeners("preview", WSProgress(
-                    prompt_id="",
-                    status="preview",
-                    preview_data=message[8:]  # Skip header
-                ))
+                await self._notify_listeners(
+                    "preview",
+                    WSProgress(
+                        prompt_id="",
+                        status="preview",
+                        preview_data=message[8:],  # Skip header
+                    ),
+                )
             return
 
         try:
@@ -280,12 +280,12 @@ class ComfyWSClient:
             # Log with more context for debugging malformed messages
             truncated_msg = message[:200] if len(message) > 200 else message
             logger.warning(
-                f"Malformed WebSocket message received",
+                "Malformed WebSocket message received",
                 extra={
                     "error": str(e),
                     "message_preview": truncated_msg,
-                    "message_length": len(message)
-                }
+                    "message_length": len(message),
+                },
             )
             return
 
@@ -347,7 +347,7 @@ class ComfyWSClient:
             await self._notify_listeners(prompt_id, progress)
 
         elif msg_type == WSMessageType.EXECUTION_CACHED:
-            nodes = msg_data.get("nodes", [])
+            msg_data.get("nodes", [])
             progress = WSProgress(
                 prompt_id=prompt_id,
                 status="cached",
@@ -381,7 +381,7 @@ class ComfyWSClient:
         if len(self._listeners[prompt_id]) >= self.MAX_LISTENERS_PER_PROMPT:
             logger.warning(
                 f"Maximum listeners ({self.MAX_LISTENERS_PER_PROMPT}) reached for prompt",
-                extra={"prompt_id": prompt_id[:8] if prompt_id else "global"}
+                extra={"prompt_id": prompt_id[:8] if prompt_id else "global"},
             )
             return
 
@@ -390,9 +390,7 @@ class ComfyWSClient:
     def remove_listener(self, prompt_id: str, callback: ProgressCallback):
         """Remove a progress listener."""
         if prompt_id in self._listeners:
-            self._listeners[prompt_id] = [
-                cb for cb in self._listeners[prompt_id] if cb != callback
-            ]
+            self._listeners[prompt_id] = [cb for cb in self._listeners[prompt_id] if cb != callback]
 
     async def _notify_listeners(self, prompt_id: str, progress: WSProgress):
         """Notify all listeners for a prompt."""
@@ -411,7 +409,7 @@ class ComfyWSClient:
                 except Exception as e:
                     logger.warning(f"Global listener error: {e}")
 
-    async def queue_prompt(self, workflow: Dict[str, Any]) -> str:
+    async def queue_prompt(self, workflow: dict[str, Any]) -> str:
         """
         Queue a workflow for execution.
 
@@ -436,14 +434,14 @@ class ComfyWSClient:
             data = response.json()
 
         prompt_id = data.get("prompt_id")
-        logger.info(f"Queued prompt", extra={"prompt_id": prompt_id[:8]})
+        logger.info("Queued prompt", extra={"prompt_id": prompt_id[:8]})
         return prompt_id
 
     async def wait_for_completion(
         self,
         prompt_id: str,
-        timeout: Optional[float] = None,
-        on_progress: Optional[ProgressCallback] = None,
+        timeout: float | None = None,
+        on_progress: ProgressCallback | None = None,
     ) -> WSProgress:
         """
         Wait for a prompt to complete using WebSocket updates.
@@ -484,7 +482,7 @@ class ComfyWSClient:
 
         return final_progress
 
-    async def get_history(self, prompt_id: str) -> Dict[str, Any]:
+    async def get_history(self, prompt_id: str) -> dict[str, Any]:
         """Get execution history for a prompt."""
         import httpx
 
@@ -504,7 +502,7 @@ class ComfyWSClient:
         filename: str,
         subfolder: str = "",
         folder_type: str = "output",
-    ) -> Optional[bytes]:
+    ) -> bytes | None:
         """Download a generated image."""
         import httpx
 

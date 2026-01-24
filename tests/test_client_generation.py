@@ -9,10 +9,9 @@ Covers:
 - Workflow building
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-import time
-from unittest.mock import patch, MagicMock, PropertyMock
-import json
 
 
 class TestComfyClientInitialization:
@@ -146,7 +145,7 @@ class TestQueuePrompt:
 
         client = ComfyClient()
 
-        with patch.object(client, '_post') as mock_post:
+        with patch.object(client, "_post") as mock_post:
             mock_response = MagicMock()
             mock_response.ok = True
             mock_response.json.return_value = {"prompt_id": "test-123"}
@@ -161,7 +160,7 @@ class TestQueuePrompt:
 
         client = ComfyClient()
 
-        with patch.object(client, '_post') as mock_post:
+        with patch.object(client, "_post") as mock_post:
             mock_response = MagicMock()
             mock_response.ok = False
             mock_response.status_code = 400
@@ -183,13 +182,8 @@ class TestWaitForCompletion:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_history') as mock_history:
-            mock_history.return_value = {
-                "test-123": {
-                    "status": {"completed": True},
-                    "outputs": {}
-                }
-            }
+        with patch.object(client, "get_history") as mock_history:
+            mock_history.return_value = {"test-123": {"status": {"completed": True}, "outputs": {}}}
 
             result = client.wait_for_completion("test-123", timeout=1.0)
             assert result is not None
@@ -201,7 +195,7 @@ class TestWaitForCompletion:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_history') as mock_history:
+        with patch.object(client, "get_history") as mock_history:
             mock_history.return_value = {}  # Never completes
 
             result = client.wait_for_completion("test-123", timeout=0.1, poll_interval=0.05)
@@ -217,22 +211,19 @@ class TestWaitForCompletion:
         def on_progress(progress, status):
             progress_calls.append((progress, status))
 
-        with patch.object(client, 'get_history') as mock_history:
+        with patch.object(client, "get_history") as mock_history:
             # First call: not in history (queued)
             # Second call: completed
             mock_history.side_effect = [
                 {},  # Not found yet
-                {"test-123": {"status": {"completed": True}}}  # Complete
+                {"test-123": {"status": {"completed": True}}},  # Complete
             ]
 
-            with patch.object(client, 'get_queue') as mock_queue:
+            with patch.object(client, "get_queue") as mock_queue:
                 mock_queue.return_value = {"queue_pending": [], "queue_running": []}
 
-                result = client.wait_for_completion(
-                    "test-123",
-                    timeout=1.0,
-                    poll_interval=0.05,
-                    on_progress=on_progress
+                client.wait_for_completion(
+                    "test-123", timeout=1.0, poll_interval=0.05, on_progress=on_progress
                 )
 
         assert len(progress_calls) >= 1
@@ -245,11 +236,9 @@ class TestWaitForCompletion:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_history') as mock_history:
+        with patch.object(client, "get_history") as mock_history:
             mock_history.return_value = {
-                "test-123": {
-                    "status": {"status_str": "error", "completed": False}
-                }
+                "test-123": {"status": {"status_str": "error", "completed": False}}
             }
 
             result = client.wait_for_completion("test-123", timeout=1.0)
@@ -266,7 +255,7 @@ class TestGetImage:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_response = MagicMock()
             mock_response.ok = True
             mock_response.content = b"PNG image data"
@@ -281,7 +270,7 @@ class TestGetImage:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_response = MagicMock()
             mock_response.ok = False
             mock_get.return_value = mock_response
@@ -295,7 +284,7 @@ class TestGetImage:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_response = MagicMock()
             mock_response.ok = True
             mock_response.content = b"PNG image data"
@@ -319,7 +308,7 @@ class TestGetVideo:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_response = MagicMock()
             mock_response.ok = True
             mock_response.content = b"MP4 video data"
@@ -334,7 +323,7 @@ class TestGetVideo:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_get.side_effect = Exception("Network error")
 
             result = client.get_video("test.mp4")
@@ -349,12 +338,7 @@ class TestBuildTxt2ImgWorkflow:
         from comfy_headless.client import ComfyClient
 
         client = ComfyClient()
-        workflow = client.build_txt2img_workflow(
-            prompt="a sunset",
-            width=512,
-            height=512,
-            steps=20
-        )
+        workflow = client.build_txt2img_workflow(prompt="a sunset", width=512, height=512, steps=20)
 
         assert isinstance(workflow, dict)
 
@@ -364,9 +348,7 @@ class TestBuildTxt2ImgWorkflow:
 
         client = ComfyClient()
         workflow = client.build_txt2img_workflow(
-            prompt="a beautiful mountain landscape",
-            width=512,
-            height=512
+            prompt="a beautiful mountain landscape", width=512, height=512
         )
 
         # Workflow should have nodes
@@ -374,12 +356,11 @@ class TestBuildTxt2ImgWorkflow:
 
         # Find the prompt node
         has_prompt = False
-        for node_id, node in workflow.items():
-            if "inputs" in node:
-                if "text" in node["inputs"]:
-                    if "mountain" in str(node["inputs"]["text"]):
-                        has_prompt = True
-                        break
+        for _node_id, node in workflow.items():
+            if "inputs" in node and "text" in node["inputs"]:
+                if "mountain" in str(node["inputs"]["text"]):
+                    has_prompt = True
+                    break
 
         assert has_prompt
 
@@ -397,7 +378,7 @@ class TestGenerateImage:
         result = client.generate_image("a sunset")
 
         # Accept either dict or Result
-        assert isinstance(result, dict) or hasattr(result, 'ok')
+        assert isinstance(result, dict) or hasattr(result, "ok")
 
     def test_generate_image_returns_with_expected_keys(self):
         """generate_image result has expected keys."""
@@ -421,16 +402,14 @@ class TestGenerateVideo:
 
         client = ComfyClient()
 
-        with patch('comfy_headless.client._get_video_builder') as mock_builder_getter, \
-             patch.object(client, 'queue_prompt') as mock_queue, \
-             patch.object(client, 'wait_for_completion') as mock_wait, \
-             patch.object(client, 'get_video') as mock_get_video:
-
+        with (
+            patch("comfy_headless.client._get_video_builder") as mock_builder_getter,
+            patch.object(client, "queue_prompt") as mock_queue,
+            patch.object(client, "wait_for_completion") as mock_wait,
+            patch.object(client, "get_video") as mock_get_video,
+        ):
             mock_builder = MagicMock()
-            mock_builder.build.return_value = MagicMock(
-                is_valid=True,
-                workflow={"nodes": {}}
-            )
+            mock_builder.build.return_value = MagicMock(is_valid=True, workflow={"nodes": {}})
             mock_builder_getter.return_value = mock_builder
 
             mock_queue.return_value = "test-video-123"
@@ -438,11 +417,11 @@ class TestGenerateVideo:
                 "status": {"completed": True},
                 "outputs": {
                     "10": {"gifs": [{"filename": "video.mp4", "subfolder": "", "type": "output"}]}
-                }
+                },
             }
             mock_get_video.return_value = b"MP4 data"
 
-            result = client.generate_video("a cat walking", preset="ltx_fast")
+            client.generate_video("a cat walking", preset="ltx_fast")
             # Should return a Result or dict
 
 
@@ -452,7 +431,6 @@ class TestCircuitBreakerIntegration:
     def test_client_uses_circuit_breaker(self):
         """Client uses circuit breaker for requests."""
         from comfy_headless.client import ComfyClient
-        from comfy_headless.retry import get_circuit_breaker
 
         client = ComfyClient()
 
@@ -505,13 +483,11 @@ class TestGetSystemStats:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_response = MagicMock()
             mock_response.ok = True
             mock_response.json.return_value = {
-                "system": {
-                    "devices": [{"name": "cuda:0", "vram_total": 16000000000}]
-                }
+                "system": {"devices": [{"name": "cuda:0", "vram_total": 16000000000}]}
             }
             mock_get.return_value = mock_response
 
@@ -528,13 +504,10 @@ class TestGetQueue:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_response = MagicMock()
             mock_response.ok = True
-            mock_response.json.return_value = {
-                "queue_pending": [],
-                "queue_running": []
-            }
+            mock_response.json.return_value = {"queue_pending": [], "queue_running": []}
             mock_get.return_value = mock_response
 
             result = client.get_queue()
@@ -551,7 +524,7 @@ class TestGetHistory:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_response = MagicMock()
             mock_response.ok = True
             mock_response.json.return_value = {}
@@ -566,12 +539,10 @@ class TestGetHistory:
 
         client = ComfyClient()
 
-        with patch.object(client, '_get') as mock_get:
+        with patch.object(client, "_get") as mock_get:
             mock_response = MagicMock()
             mock_response.ok = True
-            mock_response.json.return_value = {
-                "test-123": {"status": {"completed": True}}
-            }
+            mock_response.json.return_value = {"test-123": {"status": {"completed": True}}}
             mock_get.return_value = mock_response
 
             result = client.get_history("test-123")
@@ -584,7 +555,6 @@ class TestErrorHandling:
     def test_connection_error_is_handled(self):
         """Connection errors are handled properly."""
         from comfy_headless.client import ComfyClient
-        from comfy_headless.exceptions import ComfyUIConnectionError
 
         # Use a non-existent host
         client = ComfyClient(base_url="http://127.0.0.1:59999")
@@ -613,18 +583,19 @@ class TestExtractOutputs:
 
     def test_extract_images_from_outputs(self):
         """Images are correctly extracted from outputs."""
-        from comfy_headless.client import ComfyClient
 
         # Test the extract_images logic that's typically in generate_image
         outputs = {
-            "9": {"images": [
-                {"filename": "img1.png", "subfolder": "", "type": "output"},
-                {"filename": "img2.png", "subfolder": "", "type": "output"},
-            ]}
+            "9": {
+                "images": [
+                    {"filename": "img1.png", "subfolder": "", "type": "output"},
+                    {"filename": "img2.png", "subfolder": "", "type": "output"},
+                ]
+            }
         }
 
         images = []
-        for node_id, node_output in outputs.items():
+        for _node_id, node_output in outputs.items():
             if "images" in node_output:
                 for img in node_output["images"]:
                     images.append(img)
@@ -635,13 +606,15 @@ class TestExtractOutputs:
     def test_extract_videos_from_outputs(self):
         """Videos are correctly extracted from outputs."""
         outputs = {
-            "10": {"gifs": [
-                {"filename": "video.mp4", "subfolder": "", "type": "output"},
-            ]}
+            "10": {
+                "gifs": [
+                    {"filename": "video.mp4", "subfolder": "", "type": "output"},
+                ]
+            }
         }
 
         videos = []
-        for node_id, node_output in outputs.items():
+        for _node_id, node_output in outputs.items():
             if "gifs" in node_output:
                 for vid in node_output["gifs"]:
                     videos.append(vid)

@@ -25,14 +25,14 @@ Usage:
     # Logs automatically include trace_id and span_id
 """
 
+import json
 import logging
 import sys
-import json
 import time
-from typing import Optional, Any, Dict
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from contextlib import contextmanager
+from typing import Any
 
 from .config import settings
 
@@ -59,9 +59,10 @@ __all__ = [
 # Try to import OpenTelemetry
 try:
     from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.resources import Resource
     from opentelemetry.instrumentation.logging import LoggingInstrumentor
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
@@ -72,6 +73,7 @@ except ImportError:
 # CUSTOM FORMATTER
 # =============================================================================
 
+
 class StructuredFormatter(logging.Formatter):
     """
     Formatter that outputs structured log messages.
@@ -81,10 +83,7 @@ class StructuredFormatter(logging.Formatter):
     """
 
     def __init__(
-        self,
-        fmt: Optional[str] = None,
-        datefmt: Optional[str] = None,
-        json_output: bool = False
+        self, fmt: str | None = None, datefmt: str | None = None, json_output: bool = False
     ):
         super().__init__(fmt, datefmt)
         self.json_output = json_output
@@ -96,7 +95,7 @@ class StructuredFormatter(logging.Formatter):
 
     def _format_json(self, record: logging.LogRecord) -> str:
         """Format as JSON for structured logging."""
-        log_data: Dict[str, Any] = {
+        log_data: dict[str, Any] = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
@@ -117,11 +116,29 @@ class StructuredFormatter(logging.Formatter):
 
         # Add extra fields (excluding standard LogRecord attributes)
         skip_keys = {
-            "name", "msg", "args", "created", "filename", "funcName",
-            "levelname", "levelno", "lineno", "module", "msecs",
-            "pathname", "process", "processName", "relativeCreated",
-            "stack_info", "exc_info", "exc_text", "thread", "threadName",
-            "message", "asctime", "taskName",
+            "name",
+            "msg",
+            "args",
+            "created",
+            "filename",
+            "funcName",
+            "levelname",
+            "levelno",
+            "lineno",
+            "module",
+            "msecs",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "stack_info",
+            "exc_info",
+            "exc_text",
+            "thread",
+            "threadName",
+            "message",
+            "asctime",
+            "taskName",
         }
 
         for key, value in record.__dict__.items():
@@ -150,7 +167,7 @@ class OtelFormatter(logging.Formatter):
             if span and span.is_recording():
                 ctx = span.get_span_context()
                 trace_id = format(ctx.trace_id, "032x")[-12:]  # Last 12 chars
-                span_id = format(ctx.span_id, "016x")[-8:]     # Last 8 chars
+                span_id = format(ctx.span_id, "016x")[-8:]  # Last 8 chars
                 trace_context = f"[{trace_id}:{span_id}] "
 
         # Build the message
@@ -161,6 +178,7 @@ class OtelFormatter(logging.Formatter):
 # =============================================================================
 # CONTEXT FILTER
 # =============================================================================
+
 
 class ContextFilter(logging.Filter):
     """
@@ -175,7 +193,7 @@ class ContextFilter(logging.Filter):
     def __init__(self, component: str = "comfy_headless"):
         super().__init__()
         self.component = component
-        self._request_id: Optional[str] = None
+        self._request_id: str | None = None
 
     def filter(self, record: logging.LogRecord) -> bool:
         record.component = self.component
@@ -222,10 +240,12 @@ def _setup_opentelemetry():
 
     try:
         # Create resource with service name
-        resource = Resource.create({
-            "service.name": settings.logging.otel_service_name,
-            "service.version": settings.version,
-        })
+        resource = Resource.create(
+            {
+                "service.name": settings.logging.otel_service_name,
+                "service.version": settings.version,
+            }
+        )
 
         # Set up tracer provider
         provider = TracerProvider(resource=resource)
@@ -258,7 +278,7 @@ def _setup_opentelemetry():
 
 _loggers: dict = {}
 _initialized: bool = False
-_context_filter: Optional[ContextFilter] = None
+_context_filter: ContextFilter | None = None
 
 
 def _setup_logging():
@@ -374,6 +394,7 @@ def clear_request_id():
 # LOGGING CONTEXT MANAGER
 # =============================================================================
 
+
 class LogContext:
     """
     Context manager for request-scoped logging.
@@ -386,7 +407,7 @@ class LogContext:
 
     def __init__(self, request_id: str):
         self.request_id = request_id
-        self.previous_id: Optional[str] = None
+        self.previous_id: str | None = None
 
     def __enter__(self):
         _setup_logging()
@@ -408,8 +429,9 @@ class LogContext:
 # OPENTELEMETRY SPAN CONTEXT
 # =============================================================================
 
+
 @contextmanager
-def traced_operation(name: str, attributes: Optional[Dict[str, Any]] = None):
+def traced_operation(name: str, attributes: dict[str, Any] | None = None):
     """
     Context manager for creating an OpenTelemetry span.
 
@@ -431,12 +453,9 @@ def traced_operation(name: str, attributes: Optional[Dict[str, Any]] = None):
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
+
 def log_exception(
-    logger: logging.Logger,
-    message: str,
-    exception: Exception,
-    level: int = logging.ERROR,
-    **extra
+    logger: logging.Logger, message: str, exception: Exception, level: int = logging.ERROR, **extra
 ):
     """
     Log an exception with consistent formatting.
@@ -449,10 +468,7 @@ def log_exception(
         **extra: Additional context fields
     """
     logger.log(
-        level,
-        f"{message}: {type(exception).__name__}: {exception}",
-        exc_info=True,
-        extra=extra
+        level, f"{message}: {type(exception).__name__}: {exception}", exc_info=True, extra=extra
     )
 
 
@@ -460,8 +476,8 @@ def log_operation(
     logger: logging.Logger,
     operation: str,
     success: bool,
-    duration_ms: Optional[float] = None,
-    **extra
+    duration_ms: float | None = None,
+    **extra,
 ):
     """
     Log an operation result.
@@ -485,6 +501,7 @@ def log_operation(
 # =============================================================================
 # PERFORMANCE LOGGING
 # =============================================================================
+
 
 @contextmanager
 def log_timing(logger: logging.Logger, operation: str, **extra):
@@ -511,7 +528,8 @@ def log_timing(logger: logging.Logger, operation: str, **extra):
 # GET TRACER (for manual span creation)
 # =============================================================================
 
-def get_tracer(name: Optional[str] = None):
+
+def get_tracer(name: str | None = None):
     """
     Get an OpenTelemetry tracer for manual span creation.
 

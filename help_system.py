@@ -29,10 +29,8 @@ Usage:
 """
 
 import os
-import re
-from typing import Optional, Dict, List, Set
-from enum import Enum
 from dataclasses import dataclass, field
+from enum import Enum
 
 from .logging_config import get_logger
 
@@ -59,6 +57,7 @@ __all__ = [
 # HELP LEVELS
 # =============================================================================
 
+
 class HelpLevel(Enum):
     """
     User expertise levels for help content adaptation.
@@ -67,6 +66,7 @@ class HelpLevel(Enum):
     CASUAL: Balanced explanations for regular users
     DEVELOPER: Full technical details, code examples, internals
     """
+
     ELI5 = "eli5"
     CASUAL = "casual"
     DEVELOPER = "developer"
@@ -100,6 +100,7 @@ def get_help_level() -> HelpLevel:
 # HELP TOPIC DATA STRUCTURE
 # =============================================================================
 
+
 @dataclass
 class HelpTopic:
     """
@@ -116,17 +117,18 @@ class HelpTopic:
         related: Related topic IDs
         keywords: Search keywords
     """
+
     id: str
     title: str
     category: str
     eli5: str
     casual: str
     developer: str
-    examples: List[str] = field(default_factory=list)
-    related: List[str] = field(default_factory=list)
-    keywords: Set[str] = field(default_factory=set)
+    examples: list[str] = field(default_factory=list)
+    related: list[str] = field(default_factory=list)
+    keywords: set[str] = field(default_factory=set)
 
-    def get_content(self, level: Optional[HelpLevel] = None) -> str:
+    def get_content(self, level: HelpLevel | None = None) -> str:
         """Get content for the specified or current level."""
         level = level or _current_level
         if level == HelpLevel.ELI5:
@@ -135,7 +137,7 @@ class HelpTopic:
             return self.casual
         return self.developer
 
-    def format(self, level: Optional[HelpLevel] = None, show_examples: bool = True) -> str:
+    def format(self, level: HelpLevel | None = None, show_examples: bool = True) -> str:
         """Format topic as displayable help text."""
         level = level or _current_level
         lines = [f"# {self.title}", "", self.get_content(level)]
@@ -156,6 +158,7 @@ class HelpTopic:
 # HELP REGISTRY
 # =============================================================================
 
+
 class HelpRegistry:
     """
     Central registry for all help topics.
@@ -164,8 +167,8 @@ class HelpRegistry:
     """
 
     def __init__(self):
-        self._topics: Dict[str, HelpTopic] = {}
-        self._by_category: Dict[str, List[str]] = {}
+        self._topics: dict[str, HelpTopic] = {}
+        self._by_category: dict[str, list[str]] = {}
 
     def register(self, topic: HelpTopic) -> None:
         """Register a help topic."""
@@ -177,25 +180,25 @@ class HelpRegistry:
         if topic.id not in self._by_category[topic.category]:
             self._by_category[topic.category].append(topic.id)
 
-    def get(self, topic_id: str) -> Optional[HelpTopic]:
+    def get(self, topic_id: str) -> HelpTopic | None:
         """Get a topic by ID."""
         # Normalize ID
         normalized = topic_id.lower().replace(" ", "_").replace("-", "_")
         return self._topics.get(normalized)
 
-    def list_all(self) -> List[str]:
+    def list_all(self) -> list[str]:
         """List all topic IDs."""
         return sorted(self._topics.keys())
 
-    def list_by_category(self, category: str) -> List[str]:
+    def list_by_category(self, category: str) -> list[str]:
         """List topic IDs in a category."""
         return self._by_category.get(category, [])
 
-    def categories(self) -> List[str]:
+    def categories(self) -> list[str]:
         """List all categories."""
         return sorted(self._by_category.keys())
 
-    def search(self, query: str, level: Optional[HelpLevel] = None) -> List[str]:
+    def search(self, query: str, level: HelpLevel | None = None) -> list[str]:
         """
         Search topics by query string.
 
@@ -231,16 +234,16 @@ _registry = HelpRegistry()
 # BUILT-IN TOPICS: CORE CONCEPTS
 # =============================================================================
 
-_registry.register(HelpTopic(
-    id="generation",
-    title="Image Generation",
-    category="core",
-    eli5="""Making pictures from words!
+_registry.register(
+    HelpTopic(
+        id="generation",
+        title="Image Generation",
+        category="core",
+        eli5="""Making pictures from words!
 
 You write what you want to see (like "a happy cat in a garden"),
 and the computer draws it for you. It's like magic drawing!""",
-
-    casual="""Image generation creates images from text descriptions called "prompts".
+        casual="""Image generation creates images from text descriptions called "prompts".
 
 How it works:
 1. You write a description (e.g., "sunset over mountains")
@@ -254,8 +257,7 @@ Key settings you can adjust:
 
 Quick start:
   client.generate_image("your description here")""",
-
-    developer="""Image generation via Stable Diffusion through ComfyUI.
+        developer="""Image generation via Stable Diffusion through ComfyUI.
 
 Pipeline:
 1. Prompt → CLIP encoder → text conditioning tensor
@@ -274,21 +276,22 @@ VRAM usage scales with resolution:
 - 512x512: ~4GB
 - 1024x1024: ~8GB
 - 2048x2048: ~16GB+ (uses tiled VAE)""",
+        examples=[
+            'from comfy_headless import ComfyClient\nclient = ComfyClient()\nresult = client.generate_image("a sunset over mountains")',
+            'result = client.generate_image(\n    "cyberpunk city at night",\n    steps=30,\n    cfg_scale=7.5,\n    width=1280,\n    height=720\n)',
+            'from comfy_headless import compile_workflow, GENERATION_PRESETS\nworkflow = compile_workflow("portrait of a woman", preset="cinematic")',
+        ],
+        related=["prompts", "presets", "workflows", "video"],
+        keywords={"image", "generate", "create", "make", "picture", "photo"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import ComfyClient\nclient = ComfyClient()\nresult = client.generate_image("a sunset over mountains")',
-        'result = client.generate_image(\n    "cyberpunk city at night",\n    steps=30,\n    cfg_scale=7.5,\n    width=1280,\n    height=720\n)',
-        'from comfy_headless import compile_workflow, GENERATION_PRESETS\nworkflow = compile_workflow("portrait of a woman", preset="cinematic")',
-    ],
-    related=["prompts", "presets", "workflows", "video"],
-    keywords={"image", "generate", "create", "make", "picture", "photo"},
-))
-
-_registry.register(HelpTopic(
-    id="prompts",
-    title="Writing Prompts",
-    category="core",
-    eli5="""Tell the computer what picture you want!
+_registry.register(
+    HelpTopic(
+        id="prompts",
+        title="Writing Prompts",
+        category="core",
+        eli5="""Tell the computer what picture you want!
 
 Just describe it like you're talking to a friend:
 - "a fluffy cat sleeping on a red pillow"
@@ -296,8 +299,7 @@ Just describe it like you're talking to a friend:
 - "a robot playing guitar"
 
 The better you describe it, the better the picture!""",
-
-    casual="""A prompt is your description of what you want to see in the image.
+        casual="""A prompt is your description of what you want to see in the image.
 
 Writing good prompts:
 1. Be specific: "golden retriever puppy" not just "dog"
@@ -313,8 +315,7 @@ golden hour lighting, masterpiece quality"
 
 Negative prompts tell the system what to avoid:
 "blurry, low quality, watermark, text, deformed" """,
-
-    developer="""Prompts are tokenized via CLIP's BPE tokenizer.
+        developer="""Prompts are tokenized via CLIP's BPE tokenizer.
 
 Token limit: 77 tokens per prompt (CLIP architecture constraint).
 Use BREAK keyword to extend beyond 77 tokens (requires compatible workflow).
@@ -338,29 +339,29 @@ AI Enhancement (v2.5.1):
 - Uses Ollama with qwen2.5:1.5b for fast enhancement
 - Concise mode: max 300 chars output
 - Styles: minimal, balanced, detailed""",
+        examples=[
+            'from comfy_headless import enhance_prompt\nenhanced = enhance_prompt("a cat", style="balanced")\nprint(enhanced.enhanced)  # Detailed prompt under 300 chars',
+            'from comfy_headless import validate_prompt, sanitize_prompt\nvalid = validate_prompt("my prompt")  # Returns bool\nclean = sanitize_prompt(user_input)  # Removes unsafe chars',
+            'from comfy_headless import PromptIntelligence\npi = PromptIntelligence()  # use_few_shot=False by default\nresult = pi.enhance("sunset", style="detailed")',
+        ],
+        related=["generation", "enhancement"],
+        keywords={"prompt", "text", "description", "write", "describe"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import enhance_prompt\nenhanced = enhance_prompt("a cat", style="balanced")\nprint(enhanced.enhanced)  # Detailed prompt under 300 chars',
-        'from comfy_headless import validate_prompt, sanitize_prompt\nvalid = validate_prompt("my prompt")  # Returns bool\nclean = sanitize_prompt(user_input)  # Removes unsafe chars',
-        'from comfy_headless import PromptIntelligence\npi = PromptIntelligence()  # use_few_shot=False by default\nresult = pi.enhance("sunset", style="detailed")',
-    ],
-    related=["generation", "enhancement"],
-    keywords={"prompt", "text", "description", "write", "describe"},
-))
-
-_registry.register(HelpTopic(
-    id="presets",
-    title="Generation Presets",
-    category="core",
-    eli5="""Ready-made recipes for different types of pictures!
+_registry.register(
+    HelpTopic(
+        id="presets",
+        title="Generation Presets",
+        category="core",
+        eli5="""Ready-made recipes for different types of pictures!
 
 Pick a recipe and everything is set up for you:
 - "fast" - Quick pictures
 - "quality" - Really good pictures (takes longer)
 - "portrait" - Pictures of people
 - "landscape" - Scenic views""",
-
-    casual="""Presets are pre-configured settings optimized for different use cases.
+        casual="""Presets are pre-configured settings optimized for different use cases.
 
 Available presets:
 - fast: Quick generation (~10 seconds)
@@ -377,8 +378,7 @@ Usage:
 Or list all presets:
   from comfy_headless import list_presets
   print(list_presets())""",
-
-    developer="""Presets configure: resolution, steps, CFG scale, sampler, scheduler.
+        developer="""Presets configure: resolution, steps, CFG scale, sampler, scheduler.
 
 Preset definitions in workflows.py:
 ```
@@ -410,30 +410,30 @@ Custom presets:
 VRAM-aware preset selection:
 - get_recommended_preset() checks available VRAM
 - Automatically suggests smaller resolution for low VRAM""",
-
-    examples=[
-        'from comfy_headless import compile_workflow, list_presets\nprint(list_presets())  # See all available presets\nworkflow = compile_workflow("sunset", preset="cinematic")',
-        'from comfy_headless import GENERATION_PRESETS\nfor name, config in GENERATION_PRESETS.items():\n    print(f"{name}: {config["steps"]} steps")',
-    ],
-    related=["generation", "workflows"],
-    keywords={"preset", "setting", "config", "recipe", "template"},
-))
+        examples=[
+            'from comfy_headless import compile_workflow, list_presets\nprint(list_presets())  # See all available presets\nworkflow = compile_workflow("sunset", preset="cinematic")',
+            'from comfy_headless import GENERATION_PRESETS\nfor name, config in GENERATION_PRESETS.items():\n    print(f"{name}: {config["steps"]} steps")',
+        ],
+        related=["generation", "workflows"],
+        keywords={"preset", "setting", "config", "recipe", "template"},
+    )
+)
 
 
 # =============================================================================
 # BUILT-IN TOPICS: FEATURES
 # =============================================================================
 
-_registry.register(HelpTopic(
-    id="video",
-    title="Video Generation",
-    category="feature",
-    eli5="""Making movies from pictures!
+_registry.register(
+    HelpTopic(
+        id="video",
+        title="Video Generation",
+        category="feature",
+        eli5="""Making movies from pictures!
 
 You describe what you want to see move, and it creates a short video.
 It's like bringing a picture to life!""",
-
-    casual="""Generate short video clips from text or images.
+        casual="""Generate short video clips from text or images.
 
 Available models (by quality/speed):
 - AnimateDiff: Fast, good for stylized animation (8GB VRAM)
@@ -448,8 +448,7 @@ Quick start:
   workflow = build_video_workflow("a cat walking", preset="gentle")
 
 Motion styles: gentle, dynamic, cinematic""",
-
-    developer="""Video generation via multi-frame denoising with temporal attention.
+        developer="""Video generation via multi-frame denoising with temporal attention.
 
 Model comparison:
 | Model       | Frames | Resolution | VRAM  | Speed    |
@@ -469,26 +468,26 @@ VideoWorkflowBuilder:
 Export formats:
 - Default: MP4 (H.264)
 - Optional: GIF, WebM, frame sequences""",
+        examples=[
+            'from comfy_headless import VideoWorkflowBuilder, VideoModel\nbuilder = VideoWorkflowBuilder()\nworkflow = builder.build("ocean waves", model=VideoModel.LTX)',
+            'from comfy_headless import build_video_workflow, list_video_presets\nprint(list_video_presets())\nworkflow = build_video_workflow("dancing flames", preset="dynamic")',
+            "from comfy_headless import get_recommended_preset\npreset = get_recommended_preset()  # Based on available VRAM",
+        ],
+        related=["generation", "presets"],
+        keywords={"video", "movie", "clip", "animation", "motion"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import VideoWorkflowBuilder, VideoModel\nbuilder = VideoWorkflowBuilder()\nworkflow = builder.build("ocean waves", model=VideoModel.LTX)',
-        'from comfy_headless import build_video_workflow, list_video_presets\nprint(list_video_presets())\nworkflow = build_video_workflow("dancing flames", preset="dynamic")',
-        'from comfy_headless import get_recommended_preset\npreset = get_recommended_preset()  # Based on available VRAM',
-    ],
-    related=["generation", "presets"],
-    keywords={"video", "movie", "clip", "animation", "motion"},
-))
-
-_registry.register(HelpTopic(
-    id="enhancement",
-    title="AI Prompt Enhancement",
-    category="feature",
-    eli5="""Making your descriptions better!
+_registry.register(
+    HelpTopic(
+        id="enhancement",
+        title="AI Prompt Enhancement",
+        category="feature",
+        eli5="""Making your descriptions better!
 
 You write a simple idea, and the AI helps add more details
 to make an even better picture.""",
-
-    casual="""AI enhancement improves your prompts automatically.
+        casual="""AI enhancement improves your prompts automatically.
 
 How it works:
 1. You write a simple prompt: "a cat"
@@ -506,8 +505,7 @@ Usage:
   print(result.enhanced)
 
 Note: Requires Ollama running locally.""",
-
-    developer="""AI enhancement via Ollama (v2.5.1).
+        developer="""AI enhancement via Ollama (v2.5.1).
 
 Configuration:
 - Model: qwen2.5:1.5b (fast) or qwen2.5:7b (quality)
@@ -531,26 +529,26 @@ Settings (config.py):
 - ollama.model: qwen2.5:1.5b
 - ollama.quality_model: qwen2.5:7b
 - ollama.timeout: 30 seconds""",
+        examples=[
+            'from comfy_headless import PromptIntelligence\npi = PromptIntelligence()\nif pi.check_ollama():\n    result = pi.enhance("forest", style="balanced")\n    print(f"Enhanced: {result.enhanced}")',
+            'from comfy_headless import quick_enhance\nenhanced = quick_enhance("mountain sunset")  # Fast enhancement',
+            'from comfy_headless import get_prompt_cache\ncache = get_prompt_cache()\nprint(f"Cache stats: {cache.stats()}")',
+        ],
+        related=["prompts", "generation"],
+        keywords={"enhance", "improve", "ai", "ollama", "smart"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import PromptIntelligence\npi = PromptIntelligence()\nif pi.check_ollama():\n    result = pi.enhance("forest", style="balanced")\n    print(f"Enhanced: {result.enhanced}")',
-        'from comfy_headless import quick_enhance\nenhanced = quick_enhance("mountain sunset")  # Fast enhancement',
-        'from comfy_headless import get_prompt_cache\ncache = get_prompt_cache()\nprint(f"Cache stats: {cache.stats()}")',
-    ],
-    related=["prompts", "generation"],
-    keywords={"enhance", "improve", "ai", "ollama", "smart"},
-))
-
-_registry.register(HelpTopic(
-    id="workflows",
-    title="Workflow System",
-    category="feature",
-    eli5="""Recipes for making pictures!
+_registry.register(
+    HelpTopic(
+        id="workflows",
+        title="Workflow System",
+        category="feature",
+        eli5="""Recipes for making pictures!
 
 Each workflow is like a cooking recipe - it has steps
 that the computer follows to make your picture.""",
-
-    casual="""Workflows define the step-by-step process for generation.
+        casual="""Workflows define the step-by-step process for generation.
 
 Workflow types:
 - txt2img: Text to image (most common)
@@ -567,8 +565,7 @@ Usage:
 
   # Send to ComfyUI
   client.queue_workflow(workflow)""",
-
-    developer="""Template-based workflow compilation system (v2.5.1).
+        developer="""Template-based workflow compilation system (v2.5.1).
 
 Architecture:
 ```
@@ -595,26 +592,26 @@ Custom templates:
 1. Create JSON template with {{parameter}} placeholders
 2. Register with TemplateLibrary
 3. Use template_id in compile_workflow()""",
+        examples=[
+            'from comfy_headless import get_compiler, get_library\nlib = get_library()\nprint(lib.list_templates())\n\ncompiler = get_compiler()\nworkflow = compiler.compile("txt2img", prompt="sunset", preset="quality")',
+            'from comfy_headless import validate_workflow_dag\nis_valid, errors = validate_workflow_dag(workflow)\nif not is_valid:\n    print(f"Validation errors: {errors}")',
+            'from comfy_headless import get_snapshot_manager\nmanager = get_snapshot_manager()\nmanager.save("my_workflow", workflow)\n# Later: workflow = manager.load("my_workflow")',
+        ],
+        related=["generation", "presets"],
+        keywords={"workflow", "template", "compile", "dag", "nodes"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import get_compiler, get_library\nlib = get_library()\nprint(lib.list_templates())\n\ncompiler = get_compiler()\nworkflow = compiler.compile("txt2img", prompt="sunset", preset="quality")',
-        'from comfy_headless import validate_workflow_dag\nis_valid, errors = validate_workflow_dag(workflow)\nif not is_valid:\n    print(f"Validation errors: {errors}")',
-        'from comfy_headless import get_snapshot_manager\nmanager = get_snapshot_manager()\nmanager.save("my_workflow", workflow)\n# Later: workflow = manager.load("my_workflow")',
-    ],
-    related=["generation", "presets"],
-    keywords={"workflow", "template", "compile", "dag", "nodes"},
-))
-
-_registry.register(HelpTopic(
-    id="health",
-    title="Health Checks",
-    category="feature",
-    eli5="""Checking if everything is working!
+_registry.register(
+    HelpTopic(
+        id="health",
+        title="Health Checks",
+        category="feature",
+        eli5="""Checking if everything is working!
 
 Like a doctor checkup, but for the computer. It makes sure
 all the parts are running properly.""",
-
-    casual="""Health checks verify all services are running properly.
+        casual="""Health checks verify all services are running properly.
 
 What's checked:
 - ComfyUI: Is it running and responding?
@@ -631,8 +628,7 @@ Quick check:
   else:
       report = check_health()
       print(report.status)""",
-
-    developer="""Health monitoring system with auto-recovery (v2.5.1).
+        developer="""Health monitoring system with auto-recovery (v2.5.1).
 
 Components:
 - HealthChecker: Performs individual checks
@@ -656,31 +652,31 @@ Auto-recovery actions:
 Integration:
 - FastAPI endpoint: GET /api/health
 - Prometheus metrics: /metrics (if enabled)""",
-
-    examples=[
-        'from comfy_headless import full_health_check\nreport = full_health_check()\nprint(report.to_dict())\nfor component, health in report.components.items():\n    print(f"{component}: {health.status}")',
-        'from comfy_headless import HealthMonitor\nmonitor = HealthMonitor(interval=60, auto_recover=True)\nmonitor.on_unhealthy(lambda r: print(f"Alert: {r}"))\nmonitor.start()',
-        'from comfy_headless import get_health_checker\nchecker = get_health_checker()\ncomfy_health = checker.check_component("comfyui")\nprint(f"ComfyUI: {comfy_health.status}")',
-    ],
-    related=["error:comfyui_offline", "error:ollama_offline"],
-    keywords={"health", "status", "check", "monitor", "diagnose"},
-))
+        examples=[
+            'from comfy_headless import full_health_check\nreport = full_health_check()\nprint(report.to_dict())\nfor component, health in report.components.items():\n    print(f"{component}: {health.status}")',
+            'from comfy_headless import HealthMonitor\nmonitor = HealthMonitor(interval=60, auto_recover=True)\nmonitor.on_unhealthy(lambda r: print(f"Alert: {r}"))\nmonitor.start()',
+            'from comfy_headless import get_health_checker\nchecker = get_health_checker()\ncomfy_health = checker.check_component("comfyui")\nprint(f"ComfyUI: {comfy_health.status}")',
+        ],
+        related=["error:comfyui_offline", "error:ollama_offline"],
+        keywords={"health", "status", "check", "monitor", "diagnose"},
+    )
+)
 
 
 # =============================================================================
 # BUILT-IN TOPICS: ERRORS
 # =============================================================================
 
-_registry.register(HelpTopic(
-    id="error:comfyui_offline",
-    title="ComfyUI Offline Error",
-    category="error",
-    eli5="""The picture-making program isn't running!
+_registry.register(
+    HelpTopic(
+        id="error:comfyui_offline",
+        title="ComfyUI Offline Error",
+        category="error",
+        eli5="""The picture-making program isn't running!
 
 It's like trying to use a printer that's turned off.
 We need to start it first.""",
-
-    casual="""ComfyUI isn't running or can't be reached.
+        casual="""ComfyUI isn't running or can't be reached.
 
 Quick fixes:
 1. Start ComfyUI if it's not running
@@ -689,8 +685,7 @@ Quick fixes:
 4. Check your firewall settings
 
 To verify it's running, open http://localhost:8188 in your browser.""",
-
-    developer="""ComfyUI server not responding at configured URL.
+        developer="""ComfyUI server not responding at configured URL.
 
 Debug checklist:
 1. Process: `tasklist | findstr python` or `ps aux | grep comfy`
@@ -710,26 +705,26 @@ Common causes:
 - ComfyUI crashed (check for CUDA OOM errors)
 - Wrong port configuration
 - WSL networking issues (use host IP, not localhost)""",
+        examples=[
+            'from comfy_headless import check_health\nreport = check_health()\nprint(f"ComfyUI: {report.components["comfyui"]}")',
+            'from comfy_headless import settings\nprint(f"ComfyUI URL: {settings.comfyui.url}")',
+            'from comfy_headless import circuit_registry\ncircuit = circuit_registry.get("comfyui")\nprint(f"Circuit state: {circuit.state}")',
+        ],
+        related=["health", "error:timeout"],
+        keywords={"offline", "connection", "comfyui", "unreachable", "refused"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import check_health\nreport = check_health()\nprint(f"ComfyUI: {report.components["comfyui"]}")',
-        'from comfy_headless import settings\nprint(f"ComfyUI URL: {settings.comfyui.url}")',
-        'from comfy_headless import circuit_registry\ncircuit = circuit_registry.get("comfyui")\nprint(f"Circuit state: {circuit.state}")',
-    ],
-    related=["health", "error:timeout"],
-    keywords={"offline", "connection", "comfyui", "unreachable", "refused"},
-))
-
-_registry.register(HelpTopic(
-    id="error:ollama_offline",
-    title="Ollama Offline Error",
-    category="error",
-    eli5="""The AI helper isn't running!
+_registry.register(
+    HelpTopic(
+        id="error:ollama_offline",
+        title="Ollama Offline Error",
+        category="error",
+        eli5="""The AI helper isn't running!
 
 Don't worry - you can still make pictures.
 The AI just helps make your descriptions better.""",
-
-    casual="""Ollama isn't running or can't be reached.
+        casual="""Ollama isn't running or can't be reached.
 
 This only affects AI enhancement features. Image generation still works!
 
@@ -739,8 +734,7 @@ Quick fixes:
 3. Make sure the model is downloaded: `ollama pull qwen2.5:1.5b`
 
 To verify: `curl http://localhost:11434/api/tags`""",
-
-    developer="""Ollama API server not responding.
+        developer="""Ollama API server not responding.
 
 Debug checklist:
 1. Process: `ollama list` (will start server if needed)
@@ -762,25 +756,25 @@ Environment variables:
 - COMFY_HEADLESS_OLLAMA__URL
 - COMFY_HEADLESS_OLLAMA__MODEL
 - COMFY_HEADLESS_OLLAMA__TIMEOUT""",
+        examples=[
+            'from comfy_headless import PromptIntelligence\npi = PromptIntelligence()\nif pi.check_ollama():\n    print("Ollama available")\nelse:\n    print("Ollama offline - using keyword enhancement")',
+            'from comfy_headless import settings\nprint(f"Ollama URL: {settings.ollama.url}")\nprint(f"Model: {settings.ollama.model}")',
+        ],
+        related=["enhancement", "health"],
+        keywords={"ollama", "offline", "ai", "enhancement", "model"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import PromptIntelligence\npi = PromptIntelligence()\nif pi.check_ollama():\n    print("Ollama available")\nelse:\n    print("Ollama offline - using keyword enhancement")',
-        'from comfy_headless import settings\nprint(f"Ollama URL: {settings.ollama.url}")\nprint(f"Model: {settings.ollama.model}")',
-    ],
-    related=["enhancement", "health"],
-    keywords={"ollama", "offline", "ai", "enhancement", "model"},
-))
-
-_registry.register(HelpTopic(
-    id="error:timeout",
-    title="Generation Timeout",
-    category="error",
-    eli5="""The picture is taking too long to make!
+_registry.register(
+    HelpTopic(
+        id="error:timeout",
+        title="Generation Timeout",
+        category="error",
+        eli5="""The picture is taking too long to make!
 
 It's like waiting for a really slow drawing.
 Let's try making a smaller or simpler picture.""",
-
-    casual="""Generation took longer than allowed.
+        casual="""Generation took longer than allowed.
 
 Quick fixes:
 1. Use a smaller image size (512x512 instead of 1024x1024)
@@ -791,8 +785,7 @@ Quick fixes:
 For video:
 - Use fewer frames
 - Choose a faster model (AnimateDiff, LTX)""",
-
-    developer="""Generation exceeded timeout threshold.
+        developer="""Generation exceeded timeout threshold.
 
 Timeout configuration:
 - settings.comfyui.timeout_image: 120s (images)
@@ -815,26 +808,26 @@ Retry behavior:
 - Default: 2 retries with exponential backoff
 - Circuit breaker opens after 3 consecutive timeouts
 - Configure via RetryConfig in settings""",
+        examples=[
+            "from comfy_headless import settings\nsettings.comfyui.timeout_image = 300  # 5 minutes",
+            'from comfy_headless import ComfyWSClient\nasync with ComfyWSClient() as ws:\n    async for progress in ws.track_progress(prompt_id):\n        print(f"Progress: {progress.percent}%")',
+            'from comfy_headless import get_http_client\nclient = get_http_client()\nclient.post(f"{settings.comfyui.url}/interrupt")',
+        ],
+        related=["generation", "health", "error:vram"],
+        keywords={"timeout", "slow", "long", "wait", "stuck"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import settings\nsettings.comfyui.timeout_image = 300  # 5 minutes',
-        'from comfy_headless import ComfyWSClient\nasync with ComfyWSClient() as ws:\n    async for progress in ws.track_progress(prompt_id):\n        print(f"Progress: {progress.percent}%")',
-        'from comfy_headless import get_http_client\nclient = get_http_client()\nclient.post(f"{settings.comfyui.url}/interrupt")',
-    ],
-    related=["generation", "health", "error:vram"],
-    keywords={"timeout", "slow", "long", "wait", "stuck"},
-))
-
-_registry.register(HelpTopic(
-    id="error:vram",
-    title="Insufficient VRAM",
-    category="error",
-    eli5="""The computer's picture-making part is too full!
+_registry.register(
+    HelpTopic(
+        id="error:vram",
+        title="Insufficient VRAM",
+        category="error",
+        eli5="""The computer's picture-making part is too full!
 
 It's like trying to fit too much stuff in a small box.
 Let's make a smaller picture so it fits.""",
-
-    casual="""Your GPU doesn't have enough memory.
+        casual="""Your GPU doesn't have enough memory.
 
 Quick fixes:
 1. Use a smaller image size
@@ -846,8 +839,7 @@ VRAM requirements (approximate):
 - 512x512: ~4GB
 - 1024x1024: ~8GB
 - Video: 10-24GB depending on model""",
-
-    developer="""GPU VRAM exhausted during operation.
+        developer="""GPU VRAM exhausted during operation.
 
 VRAM usage breakdown (SD 1.5 / SDXL):
 - Model: 2GB / 6GB (fp16)
@@ -871,26 +863,26 @@ ComfyUI flags:
 - --lowvram: Aggressive offloading
 - --novram: CPU-only (very slow)
 - --gpu-only: Keep everything on GPU""",
+        examples=[
+            'from comfy_headless import full_health_check\nreport = full_health_check()\nvram = report.components["comfyui"].details.get("vram_used_pct")\nprint(f"VRAM usage: {vram}%")',
+            'from comfy_headless import get_recommended_preset\npreset = get_recommended_preset()\nprint(f"Recommended preset: {preset}")',
+            "# Clear CUDA cache\nimport torch\ntorch.cuda.empty_cache()",
+        ],
+        related=["generation", "presets", "health"],
+        keywords={"vram", "memory", "gpu", "cuda", "oom", "out of memory"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import full_health_check\nreport = full_health_check()\nvram = report.components["comfyui"].details.get("vram_used_pct")\nprint(f"VRAM usage: {vram}%")',
-        'from comfy_headless import get_recommended_preset\npreset = get_recommended_preset()\nprint(f"Recommended preset: {preset}")',
-        '# Clear CUDA cache\nimport torch\ntorch.cuda.empty_cache()',
-    ],
-    related=["generation", "presets", "health"],
-    keywords={"vram", "memory", "gpu", "cuda", "oom", "out of memory"},
-))
-
-_registry.register(HelpTopic(
-    id="error:validation",
-    title="Validation Errors",
-    category="error",
-    eli5="""Something in your request wasn't quite right!
+_registry.register(
+    HelpTopic(
+        id="error:validation",
+        title="Validation Errors",
+        category="error",
+        eli5="""Something in your request wasn't quite right!
 
 It's like filling out a form - some fields need
 to be filled in a certain way.""",
-
-    casual="""Your input didn't pass validation checks.
+        casual="""Your input didn't pass validation checks.
 
 Common issues:
 - Prompt too long (max ~500 characters recommended)
@@ -900,8 +892,7 @@ Common issues:
 - Missing required parameter
 
 The error message will tell you exactly what went wrong.""",
-
-    developer="""Pydantic-based validation system.
+        developer="""Pydantic-based validation system.
 
 Validation functions:
 - validate_prompt(text): Check prompt validity
@@ -927,30 +918,30 @@ Dimension rules:
 Custom validation:
 - Extend ValidationError with custom codes
 - Use InvalidPromptError, InvalidParameterError for specifics""",
-
-    examples=[
-        'from comfy_headless import validate_prompt, sanitize_prompt\nif not validate_prompt(user_input):\n    clean = sanitize_prompt(user_input)\n    print(f"Sanitized prompt: {clean}")',
-        'from comfy_headless import validate_dimensions, clamp_dimensions\nif not validate_dimensions(1000, 1000):\n    w, h = clamp_dimensions(1000, 1000)  # Returns 1000, 1000 (valid multiple)',
-        'from comfy_headless import validate_generation_params\ntry:\n    validate_generation_params(prompt="test", steps=100, width=100)\nexcept InvalidParameterError as e:\n    print(f"Validation error: {e}")',
-    ],
-    related=["prompts", "generation"],
-    keywords={"validation", "invalid", "error", "parameter", "check"},
-))
+        examples=[
+            'from comfy_headless import validate_prompt, sanitize_prompt\nif not validate_prompt(user_input):\n    clean = sanitize_prompt(user_input)\n    print(f"Sanitized prompt: {clean}")',
+            "from comfy_headless import validate_dimensions, clamp_dimensions\nif not validate_dimensions(1000, 1000):\n    w, h = clamp_dimensions(1000, 1000)  # Returns 1000, 1000 (valid multiple)",
+            'from comfy_headless import validate_generation_params\ntry:\n    validate_generation_params(prompt="test", steps=100, width=100)\nexcept InvalidParameterError as e:\n    print(f"Validation error: {e}")',
+        ],
+        related=["prompts", "generation"],
+        keywords={"validation", "invalid", "error", "parameter", "check"},
+    )
+)
 
 
 # =============================================================================
 # BUILT-IN TOPICS: API REFERENCE
 # =============================================================================
 
-_registry.register(HelpTopic(
-    id="api:client",
-    title="ComfyClient API",
-    category="api",
-    eli5="""The main way to make pictures with code!
+_registry.register(
+    HelpTopic(
+        id="api:client",
+        title="ComfyClient API",
+        category="api",
+        eli5="""The main way to make pictures with code!
 
 ComfyClient is your remote control for making images.""",
-
-    casual="""ComfyClient is the main interface for image generation.
+        casual="""ComfyClient is the main interface for image generation.
 
 Basic usage:
   from comfy_headless import ComfyClient
@@ -964,8 +955,7 @@ Methods:
 - generate_batch(prompts, **kwargs): Generate multiple
 - queue_workflow(workflow): Queue custom workflow
 - get_status(): Check ComfyUI status""",
-
-    developer="""ComfyClient: High-level synchronous API wrapper.
+        developer="""ComfyClient: High-level synchronous API wrapper.
 
 Constructor:
 ```python
@@ -994,24 +984,24 @@ Context manager support:
 with ComfyClient() as client:
     result = client.generate_image("test")
 ```""",
+        examples=[
+            'from comfy_headless import ComfyClient\nwith ComfyClient() as client:\n    result = client.generate_image(\n        "cyberpunk city",\n        steps=30,\n        cfg_scale=7.5,\n        preset="cinematic"\n    )\n    print(f"Generated: {result.path}")',
+            'client = ComfyClient(url="http://192.168.1.100:8188")\nfor prompt in ["cat", "dog", "bird"]:\n    result = client.generate_image(prompt)\n    print(f"{prompt}: {result.path}")',
+        ],
+        related=["generation", "api:websocket"],
+        keywords={"client", "api", "generate", "comfyclient"},
+    )
+)
 
-    examples=[
-        'from comfy_headless import ComfyClient\nwith ComfyClient() as client:\n    result = client.generate_image(\n        "cyberpunk city",\n        steps=30,\n        cfg_scale=7.5,\n        preset="cinematic"\n    )\n    print(f"Generated: {result.path}")',
-        'client = ComfyClient(url="http://192.168.1.100:8188")\nfor prompt in ["cat", "dog", "bird"]:\n    result = client.generate_image(prompt)\n    print(f"{prompt}: {result.path}")',
-    ],
-    related=["generation", "api:websocket"],
-    keywords={"client", "api", "generate", "comfyclient"},
-))
-
-_registry.register(HelpTopic(
-    id="api:websocket",
-    title="WebSocket Client API",
-    category="api",
-    eli5="""A way to watch your picture being made!
+_registry.register(
+    HelpTopic(
+        id="api:websocket",
+        title="WebSocket Client API",
+        category="api",
+        eli5="""A way to watch your picture being made!
 
 Like watching a progress bar while downloading a file.""",
-
-    casual="""ComfyWSClient provides real-time progress updates.
+        casual="""ComfyWSClient provides real-time progress updates.
 
 Use this when you want to:
 - Show a progress bar
@@ -1027,8 +1017,7 @@ Basic usage:
           print(f"Progress: {progress.percent}%")
 
 Requires: pip install comfy-headless[websocket]""",
-
-    developer="""ComfyWSClient: Async WebSocket client for real-time updates.
+        developer="""ComfyWSClient: Async WebSocket client for real-time updates.
 
 Requires [websocket] extra: `pip install comfy-headless[websocket]`
 
@@ -1063,29 +1052,29 @@ WSProgress dataclass:
 WSMessageType enum:
 - EXECUTION_START, EXECUTION_CACHED, EXECUTING
 - PROGRESS, EXECUTION_COMPLETE, EXECUTION_ERROR""",
-
-    examples=[
-        'import asyncio\nfrom comfy_headless import ComfyWSClient, compile_workflow\n\nasync def generate():\n    workflow = compile_workflow("sunset", preset="quality")\n    async with ComfyWSClient() as ws:\n        pid = await ws.queue_workflow(workflow)\n        async for p in ws.track_progress(pid):\n            print(f"\\r[{"=" * int(p.percent/5)}] {p.percent:.0f}%", end="")\n\nasyncio.run(generate())',
-        'async with ComfyWSClient() as ws:\n    pid = await ws.queue_workflow(workflow)\n    outputs = await ws.wait_for_completion(pid)\n    print(f"Images: {outputs["images"]}")',
-    ],
-    related=["api:client", "generation"],
-    keywords={"websocket", "async", "progress", "realtime"},
-))
+        examples=[
+            'import asyncio\nfrom comfy_headless import ComfyWSClient, compile_workflow\n\nasync def generate():\n    workflow = compile_workflow("sunset", preset="quality")\n    async with ComfyWSClient() as ws:\n        pid = await ws.queue_workflow(workflow)\n        async for p in ws.track_progress(pid):\n            print(f"\\r[{"=" * int(p.percent/5)}] {p.percent:.0f}%", end="")\n\nasyncio.run(generate())',
+            'async with ComfyWSClient() as ws:\n    pid = await ws.queue_workflow(workflow)\n    outputs = await ws.wait_for_completion(pid)\n    print(f"Images: {outputs["images"]}")',
+        ],
+        related=["api:client", "generation"],
+        keywords={"websocket", "async", "progress", "realtime"},
+    )
+)
 
 
 # =============================================================================
 # BUILT-IN TOPICS: CONFIGURATION
 # =============================================================================
 
-_registry.register(HelpTopic(
-    id="config",
-    title="Configuration",
-    category="config",
-    eli5="""Settings that control how everything works!
+_registry.register(
+    HelpTopic(
+        id="config",
+        title="Configuration",
+        category="config",
+        eli5="""Settings that control how everything works!
 
 Like the settings on your phone - you can customize how things behave.""",
-
-    casual="""Configuration controls all aspects of comfy_headless.
+        casual="""Configuration controls all aspects of comfy_headless.
 
 Quick access:
   from comfy_headless import settings
@@ -1097,8 +1086,7 @@ Environment variables override settings:
   COMFY_HEADLESS_COMFYUI__URL=http://192.168.1.100:8188
 
 Config file: Create .env or comfy_headless.toml""",
-
-    developer="""Pydantic-based settings with environment variable support.
+        developer="""Pydantic-based settings with environment variable support.
 
 Settings hierarchy:
 1. Environment variables (highest priority)
@@ -1131,21 +1119,22 @@ Hot reload:
 from comfy_headless import reload_settings
 reload_settings()  # Re-reads config files
 ```""",
-
-    examples=[
-        'from comfy_headless import settings, reload_settings\nprint(f"ComfyUI: {settings.comfyui.url}")\nprint(f"Ollama: {settings.ollama.url}")\n\n# Modify at runtime\nsettings.ollama.model = "qwen2.5:7b"\n\n# Reload from files\nreload_settings()',
-        'import os\nos.environ["COMFY_HEADLESS_COMFYUI__URL"] = "http://remote:8188"\n\nfrom comfy_headless import reload_settings\nreload_settings()',
-    ],
-    related=["health"],
-    keywords={"config", "settings", "environment", "url", "timeout"},
-))
+        examples=[
+            'from comfy_headless import settings, reload_settings\nprint(f"ComfyUI: {settings.comfyui.url}")\nprint(f"Ollama: {settings.ollama.url}")\n\n# Modify at runtime\nsettings.ollama.model = "qwen2.5:7b"\n\n# Reload from files\nreload_settings()',
+            'import os\nos.environ["COMFY_HEADLESS_COMFYUI__URL"] = "http://remote:8188"\n\nfrom comfy_headless import reload_settings\nreload_settings()',
+        ],
+        related=["health"],
+        keywords={"config", "settings", "environment", "url", "timeout"},
+    )
+)
 
 
 # =============================================================================
 # PUBLIC API
 # =============================================================================
 
-def get_help(topic: str, level: Optional[HelpLevel] = None) -> str:
+
+def get_help(topic: str, level: HelpLevel | None = None) -> str:
     """
     Get help for a topic.
 
@@ -1185,20 +1174,22 @@ def get_help(topic: str, level: Optional[HelpLevel] = None) -> str:
 
     # Not found
     available = _registry.list_all()
-    return f"Help topic '{topic}' not found.\n\nAvailable topics:\n" + "\n".join(f"  - {t}" for t in available[:15])
+    return f"Help topic '{topic}' not found.\n\nAvailable topics:\n" + "\n".join(
+        f"  - {t}" for t in available[:15]
+    )
 
 
-def get_help_for_error(error_code: str, level: Optional[HelpLevel] = None) -> str:
+def get_help_for_error(error_code: str, level: HelpLevel | None = None) -> str:
     """Get help specifically for an error code."""
     return get_help(f"error:{error_code.lower()}", level)
 
 
-def list_topics() -> List[str]:
+def list_topics() -> list[str]:
     """List all available help topics."""
     return _registry.list_all()
 
 
-def search_help(query: str, level: Optional[HelpLevel] = None) -> List[str]:
+def search_help(query: str, level: HelpLevel | None = None) -> list[str]:
     """
     Search help topics by query.
 
@@ -1240,9 +1231,9 @@ def format_help_list() -> str:
 def get_command_help(command: str) -> str:
     """Get help for a CLI command."""
     commands = {
-        "generate": "Generate an image from a text prompt.\n  comfy-headless generate \"your prompt here\" --preset quality",
-        "video": "Generate a video from a text prompt.\n  comfy-headless video \"your prompt\" --model ltx --frames 49",
-        "enhance": "Enhance a prompt using AI.\n  comfy-headless enhance \"simple prompt\" --style detailed",
+        "generate": 'Generate an image from a text prompt.\n  comfy-headless generate "your prompt here" --preset quality',
+        "video": 'Generate a video from a text prompt.\n  comfy-headless video "your prompt" --model ltx --frames 49',
+        "enhance": 'Enhance a prompt using AI.\n  comfy-headless enhance "simple prompt" --style detailed',
         "status": "Check ComfyUI and system status.\n  comfy-headless status",
         "presets": "List available presets.\n  comfy-headless presets",
         "health": "Run health checks.\n  comfy-headless health --verbose",

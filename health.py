@@ -16,22 +16,19 @@ Usage:
     report = checker.full_report()
 """
 
-import os
-import time
 import shutil
 import threading
-import tempfile
-from typing import Optional, Dict, Any, List, Callable
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
+from typing import Any
 
 import requests
 
-from .config import settings, get_temp_dir
+from .config import get_temp_dir, settings
 from .logging_config import get_logger
-from .retry import get_circuit_breaker
 
 logger = get_logger(__name__)
 
@@ -64,6 +61,7 @@ __all__ = [
 # HEALTH STATUS TYPES
 # =============================================================================
 
+
 class HealthStatus(Enum):
     HEALTHY = "healthy"
     DEGRADED = "degraded"
@@ -74,18 +72,19 @@ class HealthStatus(Enum):
 @dataclass
 class ComponentHealth:
     """Health status of a single component."""
+
     name: str
     status: HealthStatus
     message: str = ""
-    latency_ms: Optional[float] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    latency_ms: float | None = None
+    details: dict[str, Any] = field(default_factory=dict)
     checked_at: datetime = field(default_factory=datetime.now)
 
     @property
     def is_healthy(self) -> bool:
         return self.status == HealthStatus.HEALTHY
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "status": self.status.value,
@@ -99,8 +98,9 @@ class ComponentHealth:
 @dataclass
 class HealthReport:
     """Overall health report."""
+
     status: HealthStatus
-    components: List[ComponentHealth]
+    components: list[ComponentHealth]
     timestamp: datetime = field(default_factory=datetime.now)
     version: str = field(default_factory=lambda: settings.version)
 
@@ -108,7 +108,7 @@ class HealthReport:
     def is_healthy(self) -> bool:
         return self.status == HealthStatus.HEALTHY
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status.value,
             "healthy": self.is_healthy,
@@ -122,15 +122,13 @@ class HealthReport:
 # INDIVIDUAL HEALTH CHECKS
 # =============================================================================
 
+
 def check_comfyui_health() -> ComponentHealth:
     """Check ComfyUI connectivity."""
     start = time.perf_counter()
     try:
         url = settings.comfyui.url
-        response = requests.get(
-            f"{url}/system_stats",
-            timeout=settings.comfyui.timeout_connect
-        )
+        response = requests.get(f"{url}/system_stats", timeout=settings.comfyui.timeout_connect)
         latency = (time.perf_counter() - start) * 1000
 
         if response.status_code == 200:
@@ -153,33 +151,29 @@ def check_comfyui_health() -> ComponentHealth:
                 status=HealthStatus.HEALTHY,
                 message="Connected",
                 latency_ms=latency,
-                details=details
+                details=details,
             )
         else:
             return ComponentHealth(
                 name="comfyui",
                 status=HealthStatus.UNHEALTHY,
                 message=f"HTTP {response.status_code}",
-                latency_ms=latency
+                latency_ms=latency,
             )
 
     except requests.exceptions.Timeout:
         return ComponentHealth(
-            name="comfyui",
-            status=HealthStatus.UNHEALTHY,
-            message="Connection timeout"
+            name="comfyui", status=HealthStatus.UNHEALTHY, message="Connection timeout"
         )
     except requests.exceptions.ConnectionError:
         return ComponentHealth(
             name="comfyui",
             status=HealthStatus.UNHEALTHY,
-            message="Connection refused - ComfyUI not running"
+            message="Connection refused - ComfyUI not running",
         )
     except Exception as e:
         return ComponentHealth(
-            name="comfyui",
-            status=HealthStatus.UNKNOWN,
-            message=f"Check failed: {e}"
+            name="comfyui", status=HealthStatus.UNKNOWN, message=f"Check failed: {e}"
         )
 
 
@@ -188,10 +182,7 @@ def check_ollama_health() -> ComponentHealth:
     start = time.perf_counter()
     try:
         url = settings.ollama.url
-        response = requests.get(
-            f"{url}/api/tags",
-            timeout=settings.ollama.timeout_connect
-        )
+        response = requests.get(f"{url}/api/tags", timeout=settings.ollama.timeout_connect)
         latency = (time.perf_counter() - start) * 1000
 
         if response.status_code == 200:
@@ -204,9 +195,9 @@ def check_ollama_health() -> ComponentHealth:
             preferred = settings.ollama.model
             # Exact match first, then base name match (before the colon variation)
             has_model = any(
-                name == preferred or  # Exact match
-                name.startswith(f"{preferred}:") or  # Preferred is base, name has tag
-                preferred.startswith(f"{name}:")  # Name is base, preferred has tag
+                name == preferred  # Exact match
+                or name.startswith(f"{preferred}:")  # Preferred is base, name has tag
+                or preferred.startswith(f"{name}:")  # Name is base, preferred has tag
                 for name in model_names
             )
             # Also check if any model starts with the same base (e.g., qwen2.5)
@@ -219,33 +210,31 @@ def check_ollama_health() -> ComponentHealth:
                 status=HealthStatus.HEALTHY if has_model else HealthStatus.DEGRADED,
                 message="Connected" if has_model else f"Model {preferred} not found",
                 latency_ms=latency,
-                details={"models": model_names[:5], "model_available": has_model}
+                details={"models": model_names[:5], "model_available": has_model},
             )
         else:
             return ComponentHealth(
                 name="ollama",
                 status=HealthStatus.UNHEALTHY,
                 message=f"HTTP {response.status_code}",
-                latency_ms=latency
+                latency_ms=latency,
             )
 
     except requests.exceptions.Timeout:
         return ComponentHealth(
             name="ollama",
             status=HealthStatus.DEGRADED,
-            message="Connection timeout - AI features unavailable"
+            message="Connection timeout - AI features unavailable",
         )
     except requests.exceptions.ConnectionError:
         return ComponentHealth(
             name="ollama",
             status=HealthStatus.DEGRADED,
-            message="Not running - AI features unavailable"
+            message="Not running - AI features unavailable",
         )
     except Exception as e:
         return ComponentHealth(
-            name="ollama",
-            status=HealthStatus.UNKNOWN,
-            message=f"Check failed: {e}"
+            name="ollama", status=HealthStatus.UNKNOWN, message=f"Check failed: {e}"
         )
 
 
@@ -254,8 +243,8 @@ def check_disk_space() -> ComponentHealth:
     try:
         temp_dir = get_temp_dir()
         usage = shutil.disk_usage(temp_dir)
-        free_gb = usage.free / (1024 ** 3)
-        total_gb = usage.total / (1024 ** 3)
+        free_gb = usage.free / (1024**3)
+        total_gb = usage.total / (1024**3)
         used_pct = (usage.used / usage.total) * 100
 
         if free_gb < 1:
@@ -277,14 +266,12 @@ def check_disk_space() -> ComponentHealth:
                 "total_gb": round(total_gb, 1),
                 "used_pct": round(used_pct, 1),
                 "path": str(temp_dir),
-            }
+            },
         )
 
     except Exception as e:
         return ComponentHealth(
-            name="disk",
-            status=HealthStatus.UNKNOWN,
-            message=f"Check failed: {e}"
+            name="disk", status=HealthStatus.UNKNOWN, message=f"Check failed: {e}"
         )
 
 
@@ -292,9 +279,10 @@ def check_memory() -> ComponentHealth:
     """Check available memory."""
     try:
         import psutil
+
         mem = psutil.virtual_memory()
-        available_gb = mem.available / (1024 ** 3)
-        total_gb = mem.total / (1024 ** 3)
+        available_gb = mem.available / (1024**3)
+        total_gb = mem.total / (1024**3)
         used_pct = mem.percent
 
         if available_gb < 1:
@@ -315,20 +303,16 @@ def check_memory() -> ComponentHealth:
                 "available_gb": round(available_gb, 1),
                 "total_gb": round(total_gb, 1),
                 "used_pct": round(used_pct, 1),
-            }
+            },
         )
 
     except ImportError:
         return ComponentHealth(
-            name="memory",
-            status=HealthStatus.UNKNOWN,
-            message="psutil not installed"
+            name="memory", status=HealthStatus.UNKNOWN, message="psutil not installed"
         )
     except Exception as e:
         return ComponentHealth(
-            name="memory",
-            status=HealthStatus.UNKNOWN,
-            message=f"Check failed: {e}"
+            name="memory", status=HealthStatus.UNKNOWN, message=f"Check failed: {e}"
         )
 
 
@@ -338,7 +322,7 @@ def check_temp_files() -> ComponentHealth:
         temp_dir = get_temp_dir()
         files = list(temp_dir.glob("*"))
         total_size = sum(f.stat().st_size for f in files if f.is_file())
-        size_mb = total_size / (1024 ** 2)
+        size_mb = total_size / (1024**2)
 
         if size_mb > 1000:
             status = HealthStatus.DEGRADED
@@ -355,14 +339,12 @@ def check_temp_files() -> ComponentHealth:
                 "file_count": len(files),
                 "size_mb": round(size_mb, 1),
                 "path": str(temp_dir),
-            }
+            },
         )
 
     except Exception as e:
         return ComponentHealth(
-            name="temp_files",
-            status=HealthStatus.UNKNOWN,
-            message=f"Check failed: {e}"
+            name="temp_files", status=HealthStatus.UNKNOWN, message=f"Check failed: {e}"
         )
 
 
@@ -373,10 +355,7 @@ def check_circuit_breakers() -> ComponentHealth:
 
         status_map = circuit_registry.status()
 
-        open_circuits = [
-            name for name, s in status_map.items()
-            if s["state"] == "open"
-        ]
+        open_circuits = [name for name, s in status_map.items() if s["state"] == "open"]
 
         if open_circuits:
             status = HealthStatus.DEGRADED
@@ -385,24 +364,18 @@ def check_circuit_breakers() -> ComponentHealth:
             status = HealthStatus.HEALTHY
             message = "All circuits closed"
 
-        return ComponentHealth(
-            name="circuits",
-            status=status,
-            message=message,
-            details=status_map
-        )
+        return ComponentHealth(name="circuits", status=status, message=message, details=status_map)
 
     except Exception as e:
         return ComponentHealth(
-            name="circuits",
-            status=HealthStatus.UNKNOWN,
-            message=f"Check failed: {e}"
+            name="circuits", status=HealthStatus.UNKNOWN, message=f"Check failed: {e}"
         )
 
 
 # =============================================================================
 # HEALTH CHECKER CLASS
 # =============================================================================
+
 
 class HealthChecker:
     """
@@ -417,7 +390,7 @@ class HealthChecker:
     """
 
     def __init__(self):
-        self._checks: Dict[str, Callable[[], ComponentHealth]] = {
+        self._checks: dict[str, Callable[[], ComponentHealth]] = {
             "comfyui": check_comfyui_health,
             "ollama": check_ollama_health,
             "disk": check_disk_space,
@@ -425,7 +398,7 @@ class HealthChecker:
             "temp_files": check_temp_files,
             "circuits": check_circuit_breakers,
         }
-        self._recovery_actions: Dict[str, Callable[[], bool]] = {
+        self._recovery_actions: dict[str, Callable[[], bool]] = {
             "temp_files": self._cleanup_temp_files,
             "circuits": self._reset_circuits,
         }
@@ -436,7 +409,7 @@ class HealthChecker:
             return ComponentHealth(
                 name=component,
                 status=HealthStatus.UNKNOWN,
-                message=f"Unknown component: {component}"
+                message=f"Unknown component: {component}",
             )
         return self._checks[component]()
 
@@ -452,7 +425,7 @@ class HealthChecker:
         overall = self._compute_overall_status(components)
         return HealthReport(status=overall, components=components)
 
-    def _compute_overall_status(self, components: List[ComponentHealth]) -> HealthStatus:
+    def _compute_overall_status(self, components: list[ComponentHealth]) -> HealthStatus:
         """Compute overall status from component statuses."""
         statuses = [c.status for c in components]
 
@@ -470,7 +443,7 @@ class HealthChecker:
 
         return HealthStatus.HEALTHY
 
-    def attempt_recovery(self, component: Optional[str] = None) -> Dict[str, bool]:
+    def attempt_recovery(self, component: str | None = None) -> dict[str, bool]:
         """
         Attempt to recover unhealthy components.
 
@@ -525,6 +498,7 @@ class HealthChecker:
         """Reset all circuit breakers."""
         try:
             from .retry import circuit_registry
+
             circuit_registry.reset_all()
             logger.info("Reset all circuit breakers")
             return True
@@ -536,6 +510,7 @@ class HealthChecker:
 # =============================================================================
 # BACKGROUND HEALTH MONITOR
 # =============================================================================
+
 
 class HealthMonitor:
     """
@@ -553,7 +528,7 @@ class HealthMonitor:
         self,
         interval: float = 60.0,
         auto_recover: bool = True,
-        on_unhealthy: Optional[Callable[[HealthReport], None]] = None
+        on_unhealthy: Callable[[HealthReport], None] | None = None,
     ):
         self.interval = interval
         self.auto_recover = auto_recover
@@ -561,11 +536,11 @@ class HealthMonitor:
 
         self._checker = HealthChecker()
         self._running = False
-        self._thread: Optional[threading.Thread] = None
-        self._last_report: Optional[HealthReport] = None
+        self._thread: threading.Thread | None = None
+        self._last_report: HealthReport | None = None
 
     @property
-    def last_report(self) -> Optional[HealthReport]:
+    def last_report(self) -> HealthReport | None:
         return self._last_report
 
     def start(self):
@@ -594,8 +569,7 @@ class HealthMonitor:
 
                 if not report.is_healthy:
                     logger.warning(
-                        f"Health check: {report.status.value}",
-                        extra={"report": report.to_dict()}
+                        f"Health check: {report.status.value}", extra={"report": report.to_dict()}
                     )
 
                     if self.on_unhealthy:
@@ -617,7 +591,7 @@ class HealthMonitor:
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
-_checker: Optional[HealthChecker] = None
+_checker: HealthChecker | None = None
 
 
 def get_health_checker() -> HealthChecker:

@@ -24,8 +24,9 @@ Example:
     python tests/atheris_runner.py prompt ./corpus/prompt -max_total_time=300
 """
 
-import sys
+import contextlib
 import os
+import sys
 
 # Add parent to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -35,6 +36,7 @@ def check_atheris():
     """Check if Atheris is available."""
     try:
         import atheris
+
         return True
     except ImportError:
         return False
@@ -44,21 +46,20 @@ def check_atheris():
 # FUZZ TARGETS
 # =============================================================================
 
+
 def fuzz_prompt(data: bytes) -> None:
     """Fuzz target for prompt validation and sanitization."""
     try:
-        text = data.decode('utf-8', errors='replace')
+        text = data.decode("utf-8", errors="replace")
     except Exception:
         return
 
-    from comfy_headless.validation import validate_prompt, sanitize_prompt
     from comfy_headless.exceptions import InvalidPromptError, SecurityError
+    from comfy_headless.validation import sanitize_prompt, validate_prompt
 
     # Test sanitization
-    try:
+    with contextlib.suppress(Exception):
         sanitize_prompt(text)
-    except Exception:
-        pass
 
     # Test validation with various settings
     for check_injection in [True, False]:
@@ -83,13 +84,13 @@ def fuzz_dimensions(data: bytes) -> None:
         return
 
     try:
-        width = int.from_bytes(data[:4], 'little', signed=True)
-        height = int.from_bytes(data[4:8], 'little', signed=True)
+        width = int.from_bytes(data[:4], "little", signed=True)
+        height = int.from_bytes(data[4:8], "little", signed=True)
     except Exception:
         return
 
-    from comfy_headless.validation import validate_dimensions, clamp_dimensions
     from comfy_headless.exceptions import DimensionError
+    from comfy_headless.validation import clamp_dimensions, validate_dimensions
 
     try:
         clamp_dimensions(width, height)
@@ -109,7 +110,7 @@ def fuzz_dimensions(data: bytes) -> None:
 def fuzz_workflow(data: bytes) -> None:
     """Fuzz target for workflow compilation."""
     try:
-        text = data.decode('utf-8', errors='replace')
+        text = data.decode("utf-8", errors="replace")
     except Exception:
         return
 
@@ -121,24 +122,22 @@ def fuzz_workflow(data: bytes) -> None:
     # Try various presets
     presets = ["draft", "balanced", "quality", "ultra"]
     for preset in presets:
-        try:
+        with contextlib.suppress(Exception):
             compile_workflow(prompt=text, preset=preset)
-        except Exception:
-            pass
 
 
 def fuzz_path(data: bytes) -> None:
     """Fuzz target for path validation."""
     try:
-        path = data.decode('utf-8', errors='replace')
+        path = data.decode("utf-8", errors="replace")
     except Exception:
         return
 
     if not path:
         return
 
-    from comfy_headless.validation import validate_path
     from comfy_headless.exceptions import SecurityError, ValidationError
+    from comfy_headless.validation import validate_path
 
     try:
         validate_path(path)
@@ -152,6 +151,7 @@ def fuzz_json_workflow(data: bytes) -> None:
     """Fuzz target for JSON workflow parsing."""
     try:
         import json
+
         workflow = json.loads(data)
     except (json.JSONDecodeError, UnicodeDecodeError):
         return
@@ -246,16 +246,14 @@ def run_all_targets(duration_per_target: int = 60):
         os.makedirs(corpus_dir, exist_ok=True)
 
         # Fork for each target to get clean state
-        pid = os.fork() if hasattr(os, 'fork') else 0
+        pid = os.fork() if hasattr(os, "fork") else 0
         if pid == 0:
             sys.argv = [sys.argv[0], corpus_dir, f"-max_total_time={duration_per_target}"]
             atheris.instrument_all()
             atheris.Setup(sys.argv, target)
-            try:
+            with contextlib.suppress(SystemExit):
                 atheris.Fuzz()
-            except SystemExit:
-                pass
-            if hasattr(os, 'fork'):
+            if hasattr(os, "fork"):
                 os._exit(0)
         else:
             os.waitpid(pid, 0)
@@ -269,8 +267,8 @@ def main():
         sys.exit(0)
 
     target = sys.argv[1]
-    corpus_dir = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith('-') else None
-    extra_args = [a for a in sys.argv[2:] if a.startswith('-')]
+    corpus_dir = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("-") else None
+    extra_args = [a for a in sys.argv[2:] if a.startswith("-")]
 
     if target == "all":
         duration = 60

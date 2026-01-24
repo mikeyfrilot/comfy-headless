@@ -1,6 +1,5 @@
 """Tests for config module."""
 
-import pytest
 
 
 class TestSettings:
@@ -52,7 +51,7 @@ class TestGetSettings:
         """Test settings can be reloaded."""
         from comfy_headless.config import get_settings, reload_settings
 
-        s1 = get_settings()
+        get_settings()
         s2 = reload_settings()
         # After reload, should be different instance
         s3 = get_settings()

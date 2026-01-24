@@ -1,6 +1,5 @@
 """Tests for intelligence module."""
 
-import pytest
 
 
 class TestPromptCache:
@@ -8,7 +7,7 @@ class TestPromptCache:
 
     def test_cache_set_and_get(self):
         """Test basic cache operations."""
-        from comfy_headless.intelligence import PromptCache, PromptAnalysis
+        from comfy_headless.intelligence import PromptAnalysis, PromptCache
 
         cache = PromptCache(max_size=10)
 
@@ -17,7 +16,7 @@ class TestPromptCache:
             intent="test",
             styles=["style1"],
             mood="neutral",
-            suggested_preset="quality"
+            suggested_preset="quality",
         )
         cache.set_analysis("test prompt", analysis)
 
@@ -35,7 +34,7 @@ class TestPromptCache:
 
     def test_cache_eviction(self):
         """Test LRU eviction when cache is full."""
-        from comfy_headless.intelligence import PromptCache, PromptAnalysis
+        from comfy_headless.intelligence import PromptAnalysis, PromptCache
 
         cache = PromptCache(max_size=3)
 
@@ -46,7 +45,7 @@ class TestPromptCache:
                 intent=f"intent{i}",
                 styles=[],
                 mood="neutral",
-                suggested_preset="quality"
+                suggested_preset="quality",
             )
             cache.set_analysis(f"prompt{i}", analysis)
 
@@ -58,16 +57,12 @@ class TestPromptCache:
 
     def test_cache_stats(self):
         """Test cache statistics."""
-        from comfy_headless.intelligence import PromptCache, PromptAnalysis
+        from comfy_headless.intelligence import PromptAnalysis, PromptCache
 
         cache = PromptCache(max_size=10)
 
         analysis = PromptAnalysis(
-            original="test",
-            intent="test",
-            styles=[],
-            mood="neutral",
-            suggested_preset="quality"
+            original="test", intent="test", styles=[], mood="neutral", suggested_preset="quality"
         )
         cache.set_analysis("test", analysis)
 
@@ -144,7 +139,7 @@ class TestPromptAnalysis:
             intent="portrait",
             styles=["realistic", "cinematic"],
             mood="dramatic",
-            suggested_preset="quality"
+            suggested_preset="quality",
         )
 
         assert analysis.intent == "portrait"
@@ -165,7 +160,7 @@ class TestEnhancedPrompt:
             enhanced="a fluffy orange cat sitting on a windowsill",
             negative="blurry, distorted",
             additions=["fluffy", "orange", "sitting", "windowsill"],
-            reasoning="Added descriptive details"
+            reasoning="Added descriptive details",
         )
 
         assert enhanced.original == "cat"

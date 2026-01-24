@@ -56,85 +56,84 @@ Usage:
 """
 
 # Feature flags (detect available optional features)
-from .feature_flags import (
-    FEATURES,
-    check_feature,
-    require_feature,
-    get_install_hint,
-    list_available_features,
-    list_missing_features,
-    FeatureNotAvailable,
-)
-
 # Configuration (import first - other modules depend on it)
 from .config import (
-    Settings,
-    settings,
-    get_temp_dir,
-    get_settings,
-    reload_settings,
     HttpConfig,
+    Settings,
+    get_settings,
+    get_temp_dir,
+    reload_settings,
+    settings,
 )
 
 # Exceptions (with verbosity levels)
 from .exceptions import (
+    CircuitOpenError,
     ComfyHeadlessError,
+    ComfyHeadlessExceptionGroup,
     ComfyUIConnectionError,
     ComfyUIOfflineError,
+    ErrorLevel,
+    GenerationFailedError,
+    GenerationTimeoutError,
+    InvalidParameterError,
+    InvalidPromptError,
     OllamaConnectionError,
     QueueError,
-    GenerationTimeoutError,
-    GenerationFailedError,
-    WorkflowCompilationError,
-    TemplateNotFoundError,
-    RetryExhaustedError,
-    CircuitOpenError,
-    ValidationError,
-    InvalidPromptError,
-    InvalidParameterError,
-    SecurityError,
     Result,
-    ErrorLevel,
+    RetryExhaustedError,
+    SecurityError,
+    TemplateNotFoundError,
+    ValidationError,
     VerbosityLevel,
-    ComfyHeadlessExceptionGroup,
+    WorkflowCompilationError,
     format_error_for_user,
-    set_verbosity,
     get_verbosity,
+    set_verbosity,
 )
-
-# Logging (with OpenTelemetry support)
-from .logging_config import (
-    get_logger,
-    set_log_level,
-    set_request_id,
-    clear_request_id,
-    LogContext,
-    log_timing,
-    traced_operation,
-    get_tracer,
-)
-
-# Retry and resilience (tenacity-based)
-from .retry import (
-    retry_with_backoff,
-    retry_on_exception,
-    retry_async,
-    CircuitBreaker,
-    CircuitState,
-    CircuitBreakerRegistry,
-    circuit_registry,
-    get_circuit_breaker,
-    RateLimiter,
-    OperationTimeoutError,
-    with_timeout,
-    async_timeout,
+from .feature_flags import (
+    FEATURES,
+    FeatureNotAvailable,
+    check_feature,
+    get_install_hint,
+    list_available_features,
+    list_missing_features,
+    require_feature,
 )
 
 # HTTP Client (httpx-based) - requires [ai] extra for async client
 from .http_client import (
     HttpClient,
-    get_http_client,
     close_all_clients,
+    get_http_client,
+)
+
+# Logging (with OpenTelemetry support)
+from .logging_config import (
+    LogContext,
+    clear_request_id,
+    get_logger,
+    get_tracer,
+    log_timing,
+    set_log_level,
+    set_request_id,
+    traced_operation,
+)
+
+# Retry and resilience (tenacity-based)
+from .retry import (
+    CircuitBreaker,
+    CircuitBreakerRegistry,
+    CircuitState,
+    OperationTimeoutError,
+    RateLimiter,
+    async_timeout,
+    circuit_registry,
+    get_circuit_breaker,
+    retry_async,
+    retry_on_exception,
+    retry_with_backoff,
+    with_timeout,
 )
 
 # Async HTTP client only if httpx is available
@@ -148,41 +147,40 @@ else:
     get_async_http_client = None
 
 # Health checks - requires [health] extra for full functionality
-from .health import (
-    HealthStatus,
-    ComponentHealth,
-    HealthReport,
-    HealthChecker,
-    HealthMonitor,
-    check_health,
-    full_health_check,
-    is_healthy,
-    get_health_checker,
-)
-
 # Cleanup
 from .cleanup import (
-    TempFileManager,
     CleanupThread,
-    get_temp_manager,
-    cleanup_temp_files,
+    TempFileManager,
     cleanup_all,
-    register_shutdown_handlers,
+    cleanup_temp_files,
+    get_temp_manager,
     register_cleanup_callback,
+    register_shutdown_handlers,
     save_temp_image,
     save_temp_video,
 )
 
 # Client
 from .client import ComfyClient
+from .health import (
+    ComponentHealth,
+    HealthChecker,
+    HealthMonitor,
+    HealthReport,
+    HealthStatus,
+    check_health,
+    full_health_check,
+    get_health_checker,
+    is_healthy,
+)
 
 # WebSocket Client (async, real-time progress)
 try:
     from .websocket_client import (
-        ComfyWSClient,
-        WSProgress,
-        WSMessageType,
         WEBSOCKETS_AVAILABLE,
+        ComfyWSClient,
+        WSMessageType,
+        WSProgress,
     )
 except ImportError:
     # websockets not installed
@@ -195,25 +193,27 @@ except ImportError:
 # Requires [ai] extra for full functionality (Ollama via httpx)
 if FEATURES["ai"]:
     from .intelligence import (
-        PromptIntelligence,
-        PromptAnalysis,
-        EnhancedPrompt,
-        get_intelligence,
-        analyze_prompt,
-        enhance_prompt,
-        quick_enhance,
-        sanitize_prompt as sanitize_prompt_ai,  # AI-specific sanitizer
-        # v2.4: Caching
-        PromptCache,
-        get_prompt_cache,
-        # v2.4: Versioning and A/B testing
-        PromptVersion,
-        PromptABTester,
+        CHAIN_OF_THOUGHT_TEMPLATE,
         # v2.4: Few-shot examples
         FEW_SHOT_ENHANCEMENT_EXAMPLES,
-        get_few_shot_prompt,
+        EnhancedPrompt,
+        PromptABTester,
+        PromptAnalysis,
+        # v2.4: Caching
+        PromptCache,
+        PromptIntelligence,
+        # v2.4: Versioning and A/B testing
+        PromptVersion,
+        analyze_prompt,
+        enhance_prompt,
         get_few_shot_examples,
-        CHAIN_OF_THOUGHT_TEMPLATE,
+        get_few_shot_prompt,
+        get_intelligence,
+        get_prompt_cache,
+        quick_enhance,
+    )
+    from .intelligence import (
+        sanitize_prompt as sanitize_prompt_ai,  # AI-specific sanitizer
     )
 else:
     # Stubs for when AI feature is not installed
@@ -235,88 +235,87 @@ else:
     CHAIN_OF_THOUGHT_TEMPLATE = None
 
 # Workflow system (v2.4: versioning, caching, DAG validation, snapshots)
-from .workflows import (
-    WorkflowCompiler,
-    WorkflowTemplate,
-    TemplateLibrary,
-    get_compiler,
-    get_library,
-    compile_workflow,
-    GENERATION_PRESETS,
-    list_presets,
-    # v2.4: Versioning
-    WorkflowVersion,
-    WorkflowSnapshot,
-    # v2.4: Snapshot management
-    SnapshotManager,
-    get_snapshot_manager,
-    # v2.4: Caching
-    WorkflowCache,
-    get_workflow_cache,
-    compute_workflow_hash,
-    # v2.4: DAG validation
-    DAGValidator,
-    validate_workflow_dag,
-)
-
-# Video module
-from .video import (
-    VideoWorkflowBuilder,
-    VideoSettings,
-    VideoModel,
-    MotionStyle,
-    get_video_builder,
-    VIDEO_PRESETS,
-    VIDEO_MODEL_INFO,
-    build_video_workflow,
-    list_video_presets,
-    get_recommended_preset,
-)
-
-# Validation (Pydantic-based)
-from .validation import (
-    validate_prompt,
-    sanitize_prompt,
-    validate_dimensions,
-    clamp_dimensions,
-    validate_path,
-    validate_in_range,
-    validate_choice,
-    validate_generation_params,
-    validated_prompt,
-    validated_dimensions,
+# Help system
+from .help_system import (
+    HelpLevel,
+    HelpRegistry,
+    HelpTopic,
+    format_help_list,
+    format_quick_help,
+    get_api_reference,
+    get_command_help,
+    get_help,
+    get_help_for_error,
+    get_help_level,
+    list_topics,
+    search_help,
+    set_help_level,
 )
 
 # Secrets management
 from .secrets_manager import (
-    SecretValue,
     SecretsManager,
+    SecretValue,
+    generate_api_key,
+    generate_token,
     get_secret,
     get_secret_str,
     get_secrets_manager,
-    generate_token,
-    generate_api_key,
     hash_secret,
-    verify_hashed_secret,
     mask_url_credentials,
     redact_dict,
+    verify_hashed_secret,
 )
 
-# Help system
-from .help_system import (
-    HelpLevel,
-    HelpTopic,
-    HelpRegistry,
-    get_help,
-    get_help_for_error,
-    list_topics,
-    search_help,
-    set_help_level,
-    get_help_level,
-    format_quick_help,
-    format_help_list,
-    get_command_help,
-    get_api_reference,
+# Validation (Pydantic-based)
+from .validation import (
+    clamp_dimensions,
+    sanitize_prompt,
+    validate_choice,
+    validate_dimensions,
+    validate_generation_params,
+    validate_in_range,
+    validate_path,
+    validate_prompt,
+    validated_dimensions,
+    validated_prompt,
+)
+
+# Video module
+from .video import (
+    VIDEO_MODEL_INFO,
+    VIDEO_PRESETS,
+    MotionStyle,
+    VideoModel,
+    VideoSettings,
+    VideoWorkflowBuilder,
+    build_video_workflow,
+    get_recommended_preset,
+    get_video_builder,
+    list_video_presets,
+)
+from .workflows import (
+    GENERATION_PRESETS,
+    # v2.4: DAG validation
+    DAGValidator,
+    # v2.4: Snapshot management
+    SnapshotManager,
+    TemplateLibrary,
+    # v2.4: Caching
+    WorkflowCache,
+    WorkflowCompiler,
+    WorkflowSnapshot,
+    WorkflowTemplate,
+    # v2.4: Versioning
+    WorkflowVersion,
+    compile_workflow,
+    compute_workflow_hash,
+    get_compiler,
+    get_library,
+    get_snapshot_manager,
+    get_workflow_cache,
+    list_presets,
+    validate_workflow_dag,
 )
 
 __version__ = "2.5.1"
@@ -350,15 +349,14 @@ def __getattr__(name: str):
         feature, module = _LAZY_IMPORTS[name]
         if not FEATURES.get(feature, False):
             hint = get_install_hint(feature)
-            raise ImportError(
-                f"'{name}' requires the [{feature}] feature. "
-                f"Install with: {hint}"
-            )
+            raise ImportError(f"'{name}' requires the [{feature}] feature. Install with: {hint}")
 
         # Special handling for launch
         if name == "launch":
+
             def _launch(port: int = 7861, share: bool = False):
                 from .ui import create_ui
+
                 app = create_ui()
                 app.launch(
                     server_name="0.0.0.0",
@@ -366,11 +364,13 @@ def __getattr__(name: str):
                     share=share,
                     inbrowser=True,
                 )
+
             return _launch
 
         # Import the actual object
         if module:
             import importlib
+
             mod = importlib.import_module(module, __package__)
             return getattr(mod, name)
 

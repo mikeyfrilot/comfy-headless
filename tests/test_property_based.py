@@ -5,13 +5,13 @@ Tests invariants and edge cases that example-based tests might miss.
 Following 2026 best practices for thorough testing.
 """
 
-import pytest
-from hypothesis import given, strategies as st, settings, assume, example
-
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 
 # =============================================================================
 # VALIDATION MODULE TESTS
 # =============================================================================
+
 
 class TestValidationProperties:
     """Property-based tests for validation module."""
@@ -34,7 +34,7 @@ class TestValidationProperties:
         result = sanitize_prompt(text)
         # Control characters are 0x00-0x1F and 0x7F (except tab, newline, carriage return)
         for char in result:
-            assert ord(char) >= 0x20 or char in '\t\n\r', f"Found control char: {ord(char)}"
+            assert ord(char) >= 0x20 or char in "\t\n\r", f"Found control char: {ord(char)}"
 
     @given(st.text(min_size=0, max_size=5000))
     def test_sanitize_prompt_respects_max_length(self, text):
@@ -71,6 +71,7 @@ class TestValidationProperties:
 # CONFIG MODULE TESTS
 # =============================================================================
 
+
 class TestConfigProperties:
     """Property-based tests for configuration."""
 
@@ -98,6 +99,7 @@ class TestConfigProperties:
 # EXCEPTIONS MODULE TESTS
 # =============================================================================
 
+
 class TestExceptionProperties:
     """Property-based tests for exception handling."""
 
@@ -124,6 +126,7 @@ class TestExceptionProperties:
 # RETRY MODULE TESTS
 # =============================================================================
 
+
 class TestRetryProperties:
     """Property-based tests for retry logic."""
 
@@ -132,11 +135,7 @@ class TestRetryProperties:
         """Circuit breaker should respect failure threshold."""
         from comfy_headless.retry import CircuitBreaker, CircuitState
 
-        breaker = CircuitBreaker(
-            name="test",
-            failure_threshold=threshold,
-            reset_timeout=60
-        )
+        breaker = CircuitBreaker(name="test", failure_threshold=threshold, reset_timeout=60)
 
         # Record failures up to threshold - 1
         for _ in range(threshold - 1):
@@ -166,6 +165,7 @@ class TestRetryProperties:
 # =============================================================================
 # INTELLIGENCE MODULE TESTS
 # =============================================================================
+
 
 class TestIntelligenceProperties:
     """Property-based tests for prompt intelligence."""
@@ -202,10 +202,13 @@ class TestIntelligenceProperties:
 # WORKFLOWS MODULE TESTS
 # =============================================================================
 
+
 class TestWorkflowProperties:
     """Property-based tests for workflow compilation."""
 
-    @given(st.sampled_from(["draft", "fast", "quality", "hd", "portrait", "landscape", "cinematic"]))
+    @given(
+        st.sampled_from(["draft", "fast", "quality", "hd", "portrait", "landscape", "cinematic"])
+    )
     def test_preset_compilation(self, preset):
         """All presets should compile without error."""
         from comfy_headless.workflows import compile_workflow
@@ -261,16 +264,29 @@ class TestWorkflowProperties:
 # VIDEO MODULE TESTS
 # =============================================================================
 
+
 class TestVideoProperties:
     """Property-based tests for video generation."""
 
-    @given(st.sampled_from([
-        "quick", "standard", "quality", "cinematic",
-        "ltx_quick", "ltx_standard", "ltx_quality",
-        "hunyuan15_720p", "hunyuan15_fast",
-        "wan_1.3b", "wan_14b",
-        "mochi", "mochi_short"
-    ]))
+    @given(
+        st.sampled_from(
+            [
+                "quick",
+                "standard",
+                "quality",
+                "cinematic",
+                "ltx_quick",
+                "ltx_standard",
+                "ltx_quality",
+                "hunyuan15_720p",
+                "hunyuan15_fast",
+                "wan_1.3b",
+                "wan_14b",
+                "mochi",
+                "mochi_short",
+            ]
+        )
+    )
     def test_video_preset_exists(self, preset_name):
         """All documented presets should exist."""
         from comfy_headless.video import VIDEO_PRESETS
@@ -290,6 +306,7 @@ class TestVideoProperties:
 # =============================================================================
 # SECRETS MODULE TESTS
 # =============================================================================
+
 
 class TestSecretsProperties:
     """Property-based tests for secrets handling."""
@@ -318,6 +335,7 @@ class TestSecretsProperties:
 # =============================================================================
 # EDGE CASE TESTS
 # =============================================================================
+
 
 class TestEdgeCases:
     """Specific edge cases that should be handled."""
@@ -368,7 +386,7 @@ class TestEdgeCases:
         from comfy_headless.intelligence import sanitize_prompt
 
         try:
-            text = data.decode('utf-8', errors='replace')
+            text = data.decode("utf-8", errors="replace")
             result = sanitize_prompt(text)
             assert isinstance(result, str)
         except Exception:
@@ -379,6 +397,7 @@ class TestEdgeCases:
 # =============================================================================
 # SNAPSHOT TESTS
 # =============================================================================
+
 
 class TestSnapshotInvariants:
     """Test workflow snapshot invariants."""

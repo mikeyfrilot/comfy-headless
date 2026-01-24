@@ -5,13 +5,12 @@ Tests component interactions and end-to-end workflows.
 Uses mocking for external services (ComfyUI, Ollama).
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 
 
 # =============================================================================
 # CLIENT INTEGRATION TESTS
 # =============================================================================
+
 
 class TestComfyClientIntegration:
     """Integration tests for ComfyClient."""
@@ -35,13 +34,14 @@ class TestComfyClientIntegration:
 # WORKFLOW COMPILATION INTEGRATION
 # =============================================================================
 
+
 class TestWorkflowCompilationIntegration:
     """Integration tests for workflow compilation pipeline."""
 
     def test_full_compilation_pipeline(self):
         """Test complete workflow compilation."""
-        from comfy_headless.workflows import compile_workflow
         from comfy_headless.intelligence import analyze_prompt
+        from comfy_headless.workflows import compile_workflow
 
         prompt = "a beautiful sunset over mountains"
 
@@ -61,9 +61,9 @@ class TestWorkflowCompilationIntegration:
 
     def test_compilation_with_all_presets(self):
         """All presets should compile successfully."""
-        from comfy_headless.workflows import compile_workflow, GENERATION_PRESETS
+        from comfy_headless.workflows import GENERATION_PRESETS, compile_workflow
 
-        for preset_name in GENERATION_PRESETS.keys():
+        for preset_name in GENERATION_PRESETS:
             result = compile_workflow(
                 prompt="test prompt",
                 preset=preset_name,
@@ -83,7 +83,9 @@ class TestWorkflowCompilationIntegration:
         workflow = result.workflow
 
         # Should have key node types
-        node_types = [node.get("class_type") for node in workflow.values() if isinstance(node, dict)]
+        node_types = [
+            node.get("class_type") for node in workflow.values() if isinstance(node, dict)
+        ]
 
         assert "KSampler" in node_types or "KSamplerAdvanced" in node_types
         assert "CheckpointLoaderSimple" in node_types
@@ -92,6 +94,7 @@ class TestWorkflowCompilationIntegration:
 # =============================================================================
 # VIDEO WORKFLOW INTEGRATION
 # =============================================================================
+
 
 class TestVideoWorkflowIntegration:
     """Integration tests for video generation workflows."""
@@ -121,6 +124,7 @@ class TestVideoWorkflowIntegration:
 # INTELLIGENCE INTEGRATION
 # =============================================================================
 
+
 class TestIntelligenceIntegration:
     """Integration tests for prompt intelligence."""
 
@@ -138,8 +142,9 @@ class TestIntelligenceIntegration:
 
         for prompt in prompts:
             analysis = analyze_prompt(prompt)
-            assert analysis.suggested_preset in GENERATION_PRESETS, \
+            assert analysis.suggested_preset in GENERATION_PRESETS, (
                 f"Suggested preset '{analysis.suggested_preset}' not in GENERATION_PRESETS"
+            )
 
     def test_style_detection_consistency(self):
         """Style detection should be consistent."""
@@ -159,12 +164,13 @@ class TestIntelligenceIntegration:
 # CACHE INTEGRATION
 # =============================================================================
 
+
 class TestCacheIntegration:
     """Integration tests for caching systems."""
 
     def test_prompt_cache_workflow(self):
         """Test prompt analysis caching."""
-        from comfy_headless.intelligence import PromptCache, PromptAnalysis
+        from comfy_headless.intelligence import PromptAnalysis, PromptCache
 
         cache = PromptCache(max_size=100)
 
@@ -174,7 +180,7 @@ class TestCacheIntegration:
             intent="portrait",
             styles=["realistic"],
             mood="neutral",
-            suggested_preset="quality"
+            suggested_preset="quality",
         )
         cache.set_analysis("test", analysis)
 
@@ -189,7 +195,7 @@ class TestCacheIntegration:
 
     def test_workflow_cache(self):
         """Test workflow caching."""
-        from comfy_headless.workflows import WorkflowCache, CompiledWorkflow
+        from comfy_headless.workflows import CompiledWorkflow, WorkflowCache
 
         cache = WorkflowCache(max_size=100, ttl_seconds=300)
 
@@ -216,6 +222,7 @@ class TestCacheIntegration:
 # ERROR HANDLING INTEGRATION
 # =============================================================================
 
+
 class TestErrorHandlingIntegration:
     """Integration tests for error handling."""
 
@@ -230,9 +237,9 @@ class TestErrorHandlingIntegration:
         """All custom exceptions should inherit from base."""
         from comfy_headless.exceptions import (
             ComfyHeadlessError,
-            ValidationError,
             ComfyUIConnectionError,
             GenerationTimeoutError,
+            ValidationError,
         )
 
         assert issubclass(ValidationError, ComfyHeadlessError)
@@ -252,6 +259,7 @@ class TestErrorHandlingIntegration:
 # =============================================================================
 # FEATURE FLAG INTEGRATION
 # =============================================================================
+
 
 class TestFeatureFlagIntegration:
     """Integration tests for feature flags."""
@@ -273,6 +281,7 @@ class TestFeatureFlagIntegration:
         # If ai feature is available, should be able to import
         if FEATURES.get("ai"):
             from comfy_headless import analyze_prompt
+
             assert callable(analyze_prompt)
 
     def test_missing_feature_handling(self):
@@ -286,6 +295,7 @@ class TestFeatureFlagIntegration:
 # =============================================================================
 # SETTINGS INTEGRATION
 # =============================================================================
+
 
 class TestSettingsIntegration:
     """Integration tests for settings management."""
@@ -303,7 +313,7 @@ class TestSettingsIntegration:
         """reload_settings should create new instance."""
         from comfy_headless.config import get_settings, reload_settings
 
-        s1 = get_settings()
+        get_settings()
         s2 = reload_settings()
         s3 = get_settings()
 
@@ -326,6 +336,7 @@ class TestSettingsIntegration:
 # =============================================================================
 # LOGGING INTEGRATION
 # =============================================================================
+
 
 class TestLoggingIntegration:
     """Integration tests for logging system."""
@@ -352,6 +363,7 @@ class TestLoggingIntegration:
 # =============================================================================
 # FULL PIPELINE TESTS
 # =============================================================================
+
 
 class TestFullPipeline:
     """End-to-end pipeline tests."""
@@ -386,8 +398,8 @@ class TestFullPipeline:
         """Test video generation pipeline."""
         from comfy_headless.video import (
             VIDEO_PRESETS,
-            get_recommended_preset,
             VideoSettings,
+            get_recommended_preset,
         )
 
         # 1. Get recommendation for GPU

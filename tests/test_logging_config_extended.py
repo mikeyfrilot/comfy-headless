@@ -1,11 +1,9 @@
 """Extended tests for logging_config module to improve coverage."""
 
-import pytest
-from unittest.mock import patch, MagicMock
-import logging
 import json
-import tempfile
-from pathlib import Path
+import logging
+
+import pytest
 
 
 class TestStructuredFormatter:
@@ -15,10 +13,7 @@ class TestStructuredFormatter:
         """Test formatter with text output."""
         from comfy_headless.logging_config import StructuredFormatter
 
-        formatter = StructuredFormatter(
-            fmt="%(levelname)s - %(message)s",
-            json_output=False
-        )
+        formatter = StructuredFormatter(fmt="%(levelname)s - %(message)s", json_output=False)
         record = logging.LogRecord(
             name="test",
             level=logging.INFO,
@@ -26,7 +21,7 @@ class TestStructuredFormatter:
             lineno=1,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         result = formatter.format(record)
         assert "INFO" in result
@@ -44,7 +39,7 @@ class TestStructuredFormatter:
             lineno=1,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         result = formatter.format(record)
 
@@ -66,7 +61,7 @@ class TestStructuredFormatter:
             lineno=1,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         record.custom_field = "custom_value"
         result = formatter.format(record)
@@ -84,6 +79,7 @@ class TestStructuredFormatter:
             raise ValueError("Test error")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(
@@ -93,7 +89,7 @@ class TestStructuredFormatter:
             lineno=1,
             msg="Error occurred",
             args=(),
-            exc_info=exc_info
+            exc_info=exc_info,
         )
         result = formatter.format(record)
 
@@ -113,7 +109,7 @@ class TestStructuredFormatter:
             lineno=1,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         # Add a non-serializable object
         record.non_serializable = lambda x: x
@@ -131,9 +127,7 @@ class TestOtelFormatter:
         """Test OtelFormatter format method."""
         from comfy_headless.logging_config import OtelFormatter
 
-        formatter = OtelFormatter(
-            fmt="%(asctime)s | %(levelname)s | %(trace_context)s%(message)s"
-        )
+        formatter = OtelFormatter(fmt="%(asctime)s | %(levelname)s | %(trace_context)s%(message)s")
         record = logging.LogRecord(
             name="test",
             level=logging.INFO,
@@ -141,7 +135,7 @@ class TestOtelFormatter:
             lineno=1,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         result = formatter.format(record)
         assert "Test message" in result
@@ -162,7 +156,7 @@ class TestContextFilter:
             lineno=1,
             msg="Test",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         filter.filter(record)
         assert record.component == "test_component"
@@ -180,7 +174,7 @@ class TestContextFilter:
             lineno=1,
             msg="Test",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         filter.filter(record)
         assert record.request_id == "req-123"
@@ -199,7 +193,7 @@ class TestContextFilter:
             lineno=1,
             msg="Test",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         filter.filter(record)
         assert record.request_id == "-"
@@ -216,11 +210,11 @@ class TestContextFilter:
             lineno=1,
             msg="Test",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         filter.filter(record)
-        assert hasattr(record, 'trace_id')
-        assert hasattr(record, 'span_id')
+        assert hasattr(record, "trace_id")
+        assert hasattr(record, "span_id")
 
 
 class TestGetLogger:
@@ -261,10 +255,10 @@ class TestSetLogLevel:
 
     def test_set_log_level_debug(self):
         """Test setting log level to DEBUG."""
-        from comfy_headless.logging_config import set_log_level, get_logger
+        from comfy_headless.logging_config import get_logger, set_log_level
 
         set_log_level("DEBUG")
-        logger = get_logger("test_level")
+        get_logger("test_level")
         # Should be able to log debug messages
 
     def test_set_log_level_warning(self):
@@ -311,7 +305,12 @@ class TestLogContext:
 
     def test_log_context_restores_previous_id(self):
         """Test LogContext restores previous request_id."""
-        from comfy_headless.logging_config import LogContext, _context_filter, set_request_id, _setup_logging
+        from comfy_headless.logging_config import (
+            LogContext,
+            _context_filter,
+            _setup_logging,
+            set_request_id,
+        )
 
         _setup_logging()
         set_request_id("original-id")
@@ -324,7 +323,7 @@ class TestLogContext:
 
     def test_log_context_clears_when_no_previous(self):
         """Test LogContext clears request_id when no previous."""
-        from comfy_headless.logging_config import LogContext, clear_request_id, _setup_logging
+        from comfy_headless.logging_config import LogContext, _setup_logging, clear_request_id
 
         _setup_logging()
         clear_request_id()
@@ -356,9 +355,9 @@ class TestLogException:
 
     def test_log_exception_logs_error(self):
         """Test log_exception logs at ERROR level."""
-        from comfy_headless.logging_config import get_logger
         # log_exception is defined but not in __all__
         from comfy_headless import logging_config
+        from comfy_headless.logging_config import get_logger
 
         logger = get_logger("test_exception")
 
@@ -373,24 +372,24 @@ class TestLogOperation:
 
     def test_log_operation_success(self):
         """Test log_operation with success."""
-        from comfy_headless.logging_config import get_logger
         from comfy_headless import logging_config
+        from comfy_headless.logging_config import get_logger
 
         logger = get_logger("test_op")
         logging_config.log_operation(logger, "my_operation", success=True, duration_ms=100.5)
 
     def test_log_operation_failure(self):
         """Test log_operation with failure."""
-        from comfy_headless.logging_config import get_logger
         from comfy_headless import logging_config
+        from comfy_headless.logging_config import get_logger
 
         logger = get_logger("test_op")
         logging_config.log_operation(logger, "my_operation", success=False)
 
     def test_log_operation_no_duration(self):
         """Test log_operation without duration."""
-        from comfy_headless.logging_config import get_logger
         from comfy_headless import logging_config
+        from comfy_headless.logging_config import get_logger
 
         logger = get_logger("test_op")
         logging_config.log_operation(logger, "my_operation", success=True)
@@ -414,9 +413,8 @@ class TestLogTiming:
 
         logger = get_logger("test_timing")
 
-        with pytest.raises(ValueError):
-            with log_timing(logger, "timed_operation"):
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), log_timing(logger, "timed_operation"):
+            raise ValueError("Test error")
 
     def test_log_timing_with_extra(self):
         """Test log_timing with extra context."""
@@ -433,7 +431,7 @@ class TestGetTracer:
 
     def test_get_tracer_without_otel(self):
         """Test get_tracer returns None without OpenTelemetry."""
-        from comfy_headless.logging_config import get_tracer, OTEL_AVAILABLE
+        from comfy_headless.logging_config import OTEL_AVAILABLE, get_tracer
 
         tracer = get_tracer()
         # May be None if OTEL not available or disabled
@@ -444,7 +442,7 @@ class TestGetTracer:
         """Test get_tracer with custom name."""
         from comfy_headless.logging_config import get_tracer
 
-        tracer = get_tracer(name="custom_tracer")
+        get_tracer(name="custom_tracer")
         # Result depends on OTEL availability
 
 
@@ -454,6 +452,7 @@ class TestOtelAvailability:
     def test_otel_available_flag_exists(self):
         """Test OTEL_AVAILABLE flag exists."""
         from comfy_headless.logging_config import OTEL_AVAILABLE
+
         assert isinstance(OTEL_AVAILABLE, bool)
 
 
@@ -475,10 +474,10 @@ class TestModuleExports:
         """Test core functions are exported."""
         from comfy_headless import logging_config
 
-        assert hasattr(logging_config, 'get_logger')
-        assert hasattr(logging_config, 'set_log_level')
-        assert hasattr(logging_config, 'LogContext')
-        assert hasattr(logging_config, 'log_timing')
+        assert hasattr(logging_config, "get_logger")
+        assert hasattr(logging_config, "set_log_level")
+        assert hasattr(logging_config, "LogContext")
+        assert hasattr(logging_config, "log_timing")
 
 
 class TestLoggingIntegration:
@@ -487,7 +486,10 @@ class TestLoggingIntegration:
     def test_full_logging_flow(self):
         """Test complete logging flow."""
         from comfy_headless.logging_config import (
-            get_logger, set_request_id, clear_request_id, LogContext
+            LogContext,
+            clear_request_id,
+            get_logger,
+            set_request_id,
         )
 
         logger = get_logger("integration_test")
@@ -506,10 +508,7 @@ class TestLoggingIntegration:
         from comfy_headless.logging_config import get_logger
 
         logger = get_logger("extra_test")
-        logger.info("Message with extra", extra={
-            "user_id": "123",
-            "action": "test"
-        })
+        logger.info("Message with extra", extra={"user_id": "123", "action": "test"})
 
     def test_logging_exception(self):
         """Test logging exceptions."""

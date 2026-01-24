@@ -4,53 +4,53 @@ Error path and failure mode tests.
 Tests that error conditions are handled gracefully without crashes.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 
+import pytest
 
 # =============================================================================
 # VALIDATION ERROR PATHS
 # =============================================================================
+
 
 class TestValidationErrorPaths:
     """Test validation error handling."""
 
     def test_negative_dimension(self):
         """Negative dimensions should raise error."""
+        from comfy_headless.exceptions import DimensionError, ValidationError
         from comfy_headless.validation import validate_dimensions
-        from comfy_headless.exceptions import ValidationError, DimensionError
 
         with pytest.raises((ValidationError, DimensionError, ValueError)):
             validate_dimensions(-100, 512)
 
     def test_zero_dimension(self):
         """Zero dimensions should raise error."""
+        from comfy_headless.exceptions import DimensionError, ValidationError
         from comfy_headless.validation import validate_dimensions
-        from comfy_headless.exceptions import ValidationError, DimensionError
 
         with pytest.raises((ValidationError, DimensionError, ValueError)):
             validate_dimensions(0, 512)
 
     def test_dimension_too_large(self):
         """Dimensions over max should raise error."""
+        from comfy_headless.exceptions import DimensionError, ValidationError
         from comfy_headless.validation import validate_dimensions
-        from comfy_headless.exceptions import ValidationError, DimensionError
 
         with pytest.raises((ValidationError, DimensionError, ValueError)):
             validate_dimensions(10000, 512)
 
     def test_invalid_in_range_below_min(self):
         """Value below min should raise error."""
-        from comfy_headless.validation import validate_in_range
         from comfy_headless.exceptions import ValidationError
+        from comfy_headless.validation import validate_in_range
 
         with pytest.raises((ValidationError, ValueError)):
             validate_in_range(-1.0, "cfg", min_val=0, max_val=30)
 
     def test_invalid_in_range_above_max(self):
         """Value above max should raise error."""
-        from comfy_headless.validation import validate_in_range
         from comfy_headless.exceptions import ValidationError
+        from comfy_headless.validation import validate_in_range
 
         with pytest.raises((ValidationError, ValueError)):
             validate_in_range(100, "steps", min_val=1, max_val=50)
@@ -67,6 +67,7 @@ class TestValidationErrorPaths:
 # WORKFLOW ERROR PATHS
 # =============================================================================
 
+
 class TestWorkflowErrorPaths:
     """Test workflow compilation error handling."""
 
@@ -82,7 +83,7 @@ class TestWorkflowErrorPaths:
             )
             # If it doesn't raise, should mark as invalid or use default
             assert result is not None
-        except (ValueError, KeyError) as e:
+        except (ValueError, KeyError):
             # Expected error types
             pass
 
@@ -113,22 +114,22 @@ class TestWorkflowErrorPaths:
 # RETRY/CIRCUIT BREAKER ERROR PATHS
 # =============================================================================
 
+
 class TestRetryErrorPaths:
     """Test retry and circuit breaker error handling."""
 
     def test_circuit_breaker_rejection(self):
         """Open circuit should reject requests."""
-        from comfy_headless.retry import CircuitBreaker, CircuitState
         from comfy_headless.exceptions import CircuitOpenError
+        from comfy_headless.retry import CircuitBreaker, CircuitState
 
         breaker = CircuitBreaker(name="test", failure_threshold=1)
         breaker.record_failure()
 
         assert breaker.state == CircuitState.OPEN
 
-        with pytest.raises(CircuitOpenError):
-            with breaker:
-                pass
+        with pytest.raises(CircuitOpenError), breaker:
+            pass
 
     def test_retry_exhaustion(self):
         """Exhausted retries should raise appropriate error."""
@@ -151,6 +152,7 @@ class TestRetryErrorPaths:
 # =============================================================================
 # SECRETS ERROR PATHS
 # =============================================================================
+
 
 class TestSecretsErrorPaths:
     """Test secrets handling error paths."""
@@ -177,6 +179,7 @@ class TestSecretsErrorPaths:
 # CONFIG ERROR PATHS
 # =============================================================================
 
+
 class TestConfigErrorPaths:
     """Test configuration error handling."""
 
@@ -199,6 +202,7 @@ class TestConfigErrorPaths:
 # =============================================================================
 # INTELLIGENCE ERROR PATHS
 # =============================================================================
+
 
 class TestIntelligenceErrorPaths:
     """Test intelligence module error handling."""
@@ -233,6 +237,7 @@ class TestIntelligenceErrorPaths:
 # VIDEO ERROR PATHS
 # =============================================================================
 
+
 class TestVideoErrorPaths:
     """Test video module error handling."""
 
@@ -255,6 +260,7 @@ class TestVideoErrorPaths:
 # CLIENT ERROR PATHS
 # =============================================================================
 
+
 class TestClientErrorPaths:
     """Test client error handling."""
 
@@ -270,13 +276,14 @@ class TestClientErrorPaths:
         from comfy_headless.client import ComfyClient
 
         client = ComfyClient()
-        assert hasattr(client, 'queue_prompt')
-        assert hasattr(client, 'get_history')
+        assert hasattr(client, "queue_prompt")
+        assert hasattr(client, "get_history")
 
 
 # =============================================================================
 # EXCEPTION ERROR PATHS
 # =============================================================================
+
 
 class TestExceptionErrorPaths:
     """Test exception creation and handling."""
@@ -285,9 +292,9 @@ class TestExceptionErrorPaths:
         """All exceptions should have string representation."""
         from comfy_headless.exceptions import (
             ComfyHeadlessError,
-            ValidationError,
             ComfyUIConnectionError,
             GenerationTimeoutError,
+            ValidationError,
         )
 
         exceptions = [
@@ -316,6 +323,7 @@ class TestExceptionErrorPaths:
 # FEATURE FLAG ERROR PATHS
 # =============================================================================
 
+
 class TestFeatureFlagErrorPaths:
     """Test feature flag error handling."""
 
@@ -337,13 +345,15 @@ class TestFeatureFlagErrorPaths:
 # CONCURRENT ACCESS TESTS
 # =============================================================================
 
+
 class TestConcurrentAccess:
     """Test thread safety and concurrent access."""
 
     def test_circuit_breaker_thread_safe(self):
         """Circuit breaker should be thread-safe."""
-        from comfy_headless.retry import CircuitBreaker
         import threading
+
+        from comfy_headless.retry import CircuitBreaker
 
         breaker = CircuitBreaker(name="thread_test", failure_threshold=100)
 
@@ -362,8 +372,9 @@ class TestConcurrentAccess:
 
     def test_cache_thread_safe(self):
         """Caches should be thread-safe."""
-        from comfy_headless.intelligence import PromptCache, PromptAnalysis
         import threading
+
+        from comfy_headless.intelligence import PromptAnalysis, PromptCache
 
         cache = PromptCache(max_size=100)
 
@@ -374,7 +385,7 @@ class TestConcurrentAccess:
                     intent="test",
                     styles=[],
                     mood="neutral",
-                    suggested_preset="quality"
+                    suggested_preset="quality",
                 )
                 cache.set_analysis(f"{threading.current_thread().name}_{i}", analysis)
 

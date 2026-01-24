@@ -10,13 +10,7 @@ class TestVideoSettings:
         """Test creating VideoSettings."""
         from comfy_headless.video import VideoSettings
 
-        settings = VideoSettings(
-            width=1280,
-            height=720,
-            frames=48,
-            fps=24,
-            steps=30
-        )
+        settings = VideoSettings(width=1280, height=720, frames=48, fps=24, steps=30)
 
         assert settings.width == 1280
         assert settings.height == 720
@@ -41,9 +35,9 @@ class TestVideoSettings:
 
         settings = VideoSettings(width=1920, height=1080)
 
-        if hasattr(settings, 'aspect_ratio'):
+        if hasattr(settings, "aspect_ratio"):
             ratio = settings.aspect_ratio
-            assert abs(ratio - 16/9) < 0.01
+            assert abs(ratio - 16 / 9) < 0.01
 
 
 class TestVideoPresets:
@@ -70,14 +64,16 @@ class TestVideoPresets:
         """Test quick preset exists."""
         from comfy_headless.video import VIDEO_PRESETS
 
-        quick_presets = [k for k in VIDEO_PRESETS.keys() if 'quick' in k.lower() or 'fast' in k.lower()]
+        quick_presets = [
+            k for k in VIDEO_PRESETS if "quick" in k.lower() or "fast" in k.lower()
+        ]
         assert len(quick_presets) > 0
 
     def test_quality_preset_exists(self):
         """Test quality preset exists."""
         from comfy_headless.video import VIDEO_PRESETS
 
-        quality_presets = [k for k in VIDEO_PRESETS.keys() if 'quality' in k.lower()]
+        quality_presets = [k for k in VIDEO_PRESETS if "quality" in k.lower()]
         assert len(quality_presets) > 0
 
 
@@ -108,7 +104,7 @@ class TestVideoRecommendations:
 
     def test_recommendations_scale_with_vram(self):
         """Test that higher VRAM gets better presets."""
-        from comfy_headless.video import get_recommended_preset, VIDEO_PRESETS
+        from comfy_headless.video import get_recommended_preset
 
         low_preset = get_recommended_preset(vram_gb=6)
         high_preset = get_recommended_preset(vram_gb=24)
@@ -134,7 +130,7 @@ class TestVideoModel:
         from comfy_headless.video import VideoModel
 
         model_values = [m.value for m in VideoModel]
-        ltx_models = [v for v in model_values if 'ltx' in v.lower()]
+        ltx_models = [v for v in model_values if "ltx" in v.lower()]
         assert len(ltx_models) > 0
 
     def test_hunyuan_models_exist(self):
@@ -142,7 +138,7 @@ class TestVideoModel:
         from comfy_headless.video import VideoModel
 
         model_values = [m.value for m in VideoModel]
-        hunyuan_models = [v for v in model_values if 'hunyuan' in v.lower()]
+        hunyuan_models = [v for v in model_values if "hunyuan" in v.lower()]
         assert len(hunyuan_models) > 0
 
 
@@ -160,10 +156,10 @@ class TestVideoModelInfo:
         """Test model info includes VRAM requirements."""
         from comfy_headless.video import VIDEO_MODEL_INFO
 
-        for model, info in VIDEO_MODEL_INFO.items():
+        for _model, info in VIDEO_MODEL_INFO.items():
             if isinstance(info, dict):
                 # May have vram_min or vram key
-                has_vram = 'vram' in info or 'vram_min' in info or 'min_vram' in info
+                pass
                 # Not all models may have this, so just check structure
 
 
@@ -179,22 +175,14 @@ class TestVideoWorkflowBuilder:
 
     def test_build_basic_workflow(self):
         """Test building a basic video workflow."""
-        from comfy_headless.video import VideoWorkflowBuilder, VideoSettings
+        from comfy_headless.video import VideoSettings, VideoWorkflowBuilder
 
         builder = VideoWorkflowBuilder()
-        settings = VideoSettings(
-            width=512,
-            height=512,
-            frames=24,
-            fps=24,
-            steps=20
-        )
+        settings = VideoSettings(width=512, height=512, frames=24, fps=24, steps=20)
 
         try:
             workflow = builder.build(
-                prompt="a cat walking",
-                negative="blurry, distorted",
-                settings=settings
+                prompt="a cat walking", negative="blurry, distorted", settings=settings
             )
             assert workflow is not None
         except (NotImplementedError, AttributeError, TypeError):
@@ -231,14 +219,9 @@ class TestVideoDuration:
         """Test calculating duration from frames and fps."""
         from comfy_headless.video import VideoSettings
 
-        settings = VideoSettings(
-            width=512,
-            height=512,
-            frames=48,
-            fps=24
-        )
+        settings = VideoSettings(width=512, height=512, frames=48, fps=24)
 
-        if hasattr(settings, 'duration'):
+        if hasattr(settings, "duration"):
             assert settings.duration == 2.0  # 48 frames / 24 fps = 2 seconds
         else:
             # Calculate manually
@@ -253,12 +236,8 @@ class TestVideoMemoryEstimation:
         """Test VRAM estimation for video generation."""
         from comfy_headless.video import VideoSettings
 
-        settings = VideoSettings(
-            width=1280,
-            height=720,
-            frames=48
-        )
+        settings = VideoSettings(width=1280, height=720, frames=48)
 
-        if hasattr(settings, 'estimate_vram'):
+        if hasattr(settings, "estimate_vram"):
             vram = settings.estimate_vram()
             assert vram > 0

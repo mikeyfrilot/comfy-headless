@@ -1,7 +1,5 @@
 """Tests for health module."""
 
-import pytest
-from unittest.mock import patch, MagicMock
 
 
 class TestHealthStatus:
@@ -23,11 +21,7 @@ class TestComponentHealth:
         """Test creating ComponentHealth."""
         from comfy_headless.health import ComponentHealth, HealthStatus
 
-        health = ComponentHealth(
-            name="test",
-            status=HealthStatus.HEALTHY,
-            message="All good"
-        )
+        health = ComponentHealth(name="test", status=HealthStatus.HEALTHY, message="All good")
 
         assert health.name == "test"
         assert health.status == HealthStatus.HEALTHY
@@ -40,10 +34,7 @@ class TestHealthReport:
         """Test creating HealthReport."""
         from comfy_headless.health import HealthReport, HealthStatus
 
-        report = HealthReport(
-            status=HealthStatus.HEALTHY,
-            components=[]
-        )
+        report = HealthReport(status=HealthStatus.HEALTHY, components=[])
 
         assert report.status == HealthStatus.HEALTHY
 
@@ -53,7 +44,7 @@ class TestHealthCheckFunctions:
 
     def test_check_comfyui_health(self):
         """Test check_comfyui_health function."""
-        from comfy_headless.health import check_comfyui_health, ComponentHealth
+        from comfy_headless.health import ComponentHealth, check_comfyui_health
 
         result = check_comfyui_health()
         assert isinstance(result, ComponentHealth)
@@ -61,7 +52,7 @@ class TestHealthCheckFunctions:
 
     def test_check_ollama_health(self):
         """Test check_ollama_health function."""
-        from comfy_headless.health import check_ollama_health, ComponentHealth
+        from comfy_headless.health import ComponentHealth, check_ollama_health
 
         result = check_ollama_health()
         assert isinstance(result, ComponentHealth)
@@ -69,7 +60,7 @@ class TestHealthCheckFunctions:
 
     def test_check_disk_space(self):
         """Test check_disk_space function."""
-        from comfy_headless.health import check_disk_space, ComponentHealth
+        from comfy_headless.health import ComponentHealth, check_disk_space
 
         result = check_disk_space()
         assert isinstance(result, ComponentHealth)
@@ -77,7 +68,7 @@ class TestHealthCheckFunctions:
 
     def test_check_memory(self):
         """Test check_memory function."""
-        from comfy_headless.health import check_memory, ComponentHealth
+        from comfy_headless.health import ComponentHealth, check_memory
 
         result = check_memory()
         assert isinstance(result, ComponentHealth)
@@ -85,7 +76,7 @@ class TestHealthCheckFunctions:
 
     def test_check_temp_files(self):
         """Test check_temp_files function."""
-        from comfy_headless.health import check_temp_files, ComponentHealth
+        from comfy_headless.health import ComponentHealth, check_temp_files
 
         result = check_temp_files()
         assert isinstance(result, ComponentHealth)
@@ -93,7 +84,7 @@ class TestHealthCheckFunctions:
 
     def test_check_circuit_breakers(self):
         """Test check_circuit_breakers function."""
-        from comfy_headless.health import check_circuit_breakers, ComponentHealth
+        from comfy_headless.health import ComponentHealth, check_circuit_breakers
 
         result = check_circuit_breakers()
         assert isinstance(result, ComponentHealth)
@@ -125,21 +116,21 @@ class TestHealthHelperFunctions:
 
     def test_get_health_checker(self):
         """Test get_health_checker returns singleton."""
-        from comfy_headless.health import get_health_checker, HealthChecker
+        from comfy_headless.health import HealthChecker, get_health_checker
 
         checker = get_health_checker()
         assert isinstance(checker, HealthChecker)
 
     def test_check_health(self):
         """Test check_health convenience function."""
-        from comfy_headless.health import check_health, HealthReport
+        from comfy_headless.health import HealthReport, check_health
 
         report = check_health()
         assert isinstance(report, HealthReport)
 
     def test_full_health_check(self):
         """Test full_health_check function."""
-        from comfy_headless.health import full_health_check, HealthReport
+        from comfy_headless.health import HealthReport, full_health_check
 
         report = full_health_check()
         assert isinstance(report, HealthReport)

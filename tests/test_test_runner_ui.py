@@ -1,10 +1,8 @@
 """Tests for test_runner_ui module - the universal test runner."""
 
-import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 import tempfile
-import os
+from pathlib import Path
+from unittest.mock import patch
 
 
 class TestTestRunnerConfig:
@@ -58,7 +56,7 @@ class TestTestRunnerConfig:
 
             config = TestRunnerConfig(
                 project_root=tmpdir,
-                package_path=""  # Empty to trigger auto-detect
+                package_path="",  # Empty to trigger auto-detect
             )
             assert config.package_path == "my_auto_pkg"
 
@@ -113,9 +111,10 @@ class TestTestRunner:
 
         runner = TestRunner()
         # Use a very short timeout
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             import subprocess
-            mock_run.side_effect = subprocess.TimeoutExpired(cmd=['test'], timeout=1)
+
+            mock_run.side_effect = subprocess.TimeoutExpired(cmd=["test"], timeout=1)
             stdout, stderr, code = runner.run_command(["sleep", "100"])
             assert code == 1
             assert "timed out" in stderr.lower()
@@ -125,7 +124,7 @@ class TestTestRunner:
         from comfy_headless.test_runner_ui import TestRunner
 
         runner = TestRunner()
-        with patch('subprocess.run', side_effect=Exception("Test error")):
+        with patch("subprocess.run", side_effect=Exception("Test error")):
             stdout, stderr, code = runner.run_command(["nonexistent_command"])
             assert code == 1
             assert "Test error" in stderr
@@ -141,10 +140,7 @@ class TestTestRunner:
             (tests_dir / "test_two.py").touch()
             (tests_dir / "not_a_test.py").touch()
 
-            config = TestRunnerConfig(
-                project_root=tmpdir,
-                tests_path="tests"
-            )
+            config = TestRunnerConfig(project_root=tmpdir, tests_path="tests")
             runner = TestRunner(config)
             files = runner.get_test_files()
 
@@ -161,10 +157,7 @@ class TestTestRunner:
             tests_dir = Path(tmpdir) / "tests"
             tests_dir.mkdir()
 
-            config = TestRunnerConfig(
-                project_root=tmpdir,
-                tests_path="tests"
-            )
+            config = TestRunnerConfig(project_root=tmpdir, tests_path="tests")
             runner = TestRunner(config)
             files = runner.get_test_files()
             assert files == []
@@ -241,7 +234,10 @@ TOTAL                           150     30     60     15    77.50%
 class TestTestRunnerMethods:
     """Test TestRunner utility methods."""
 
-    @patch.object(__import__('comfy_headless.test_runner_ui', fromlist=['TestRunner']).TestRunner, 'run_command')
+    @patch.object(
+        __import__("comfy_headless.test_runner_ui", fromlist=["TestRunner"]).TestRunner,
+        "run_command",
+    )
     def test_run_all_tests(self, mock_run):
         """Test run_all_tests method."""
         from comfy_headless.test_runner_ui import TestRunner
@@ -253,22 +249,32 @@ class TestTestRunnerMethods:
         assert "TEST RUN" in output
         assert "passed" in output
 
-    @patch.object(__import__('comfy_headless.test_runner_ui', fromlist=['TestRunner']).TestRunner, 'run_command')
+    @patch.object(
+        __import__("comfy_headless.test_runner_ui", fromlist=["TestRunner"]).TestRunner,
+        "run_command",
+    )
     def test_run_tests_with_coverage(self, mock_run):
         """Test run_tests_with_coverage method."""
         from comfy_headless.test_runner_ui import TestRunner
 
-        mock_run.return_value = ("""
+        mock_run.return_value = (
+            """
 10 passed in 1.00s
 TOTAL                           100     20     40     10    80.00%
-""", "", 0)
+""",
+            "",
+            0,
+        )
         runner = TestRunner()
         output, summary = runner.run_tests_with_coverage()
 
         assert "COVERAGE RUN" in output
         assert "80" in summary or "Coverage" in summary
 
-    @patch.object(__import__('comfy_headless.test_runner_ui', fromlist=['TestRunner']).TestRunner, 'run_command')
+    @patch.object(
+        __import__("comfy_headless.test_runner_ui", fromlist=["TestRunner"]).TestRunner,
+        "run_command",
+    )
     def test_run_specific_test(self, mock_run):
         """Test run_specific_test method."""
         from comfy_headless.test_runner_ui import TestRunner
@@ -289,7 +295,10 @@ TOTAL                           100     20     40     10    80.00%
 
         assert "select" in output.lower()
 
-    @patch.object(__import__('comfy_headless.test_runner_ui', fromlist=['TestRunner']).TestRunner, 'run_command')
+    @patch.object(
+        __import__("comfy_headless.test_runner_ui", fromlist=["TestRunner"]).TestRunner,
+        "run_command",
+    )
     def test_run_failed_only(self, mock_run):
         """Test run_failed_only method."""
         from comfy_headless.test_runner_ui import TestRunner
@@ -300,7 +309,10 @@ TOTAL                           100     20     40     10    80.00%
 
         assert "RE-RUNNING FAILED" in output or "No failed tests" in output
 
-    @patch.object(__import__('comfy_headless.test_runner_ui', fromlist=['TestRunner']).TestRunner, 'run_command')
+    @patch.object(
+        __import__("comfy_headless.test_runner_ui", fromlist=["TestRunner"]).TestRunner,
+        "run_command",
+    )
     def test_run_failed_only_no_failures(self, mock_run):
         """Test run_failed_only when no previous failures."""
         from comfy_headless.test_runner_ui import TestRunner
@@ -336,10 +348,7 @@ def test_three():
     pass
 """)
 
-            config = TestRunnerConfig(
-                project_root=tmpdir,
-                tests_path="tests"
-            )
+            config = TestRunnerConfig(project_root=tmpdir, tests_path="tests")
             runner = TestRunner(config)
             output = runner.check_test_quality()
 
@@ -390,9 +399,9 @@ class TestGradioAvailability:
 
     def test_launch_checks_gradio(self):
         """Test launch checks for Gradio availability."""
-        from comfy_headless.test_runner_ui import TestRunner, GRADIO_AVAILABLE
+        from comfy_headless.test_runner_ui import GRADIO_AVAILABLE, TestRunner
 
-        runner = TestRunner()
+        TestRunner()
         # Just verify we can check the flag
         assert isinstance(GRADIO_AVAILABLE, bool)
 
@@ -425,7 +434,7 @@ class TestMainEntryPoint:
 
     def test_main_uses_default_config(self):
         """Test main() uses DEFAULT_CONFIG."""
-        from comfy_headless.test_runner_ui import main, DEFAULT_CONFIG
+        from comfy_headless.test_runner_ui import DEFAULT_CONFIG
 
         # Just verify the default config is set up correctly
         assert DEFAULT_CONFIG.project_name == "Python Test Runner"

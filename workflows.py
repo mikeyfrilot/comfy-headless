@@ -23,14 +23,13 @@ v2.4.0 Enhancements (2026 Best Practices):
 """
 
 import copy
-import random
 import hashlib
 import json
+import random
 import time
-from typing import Optional, Dict, Any, List, Tuple, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from functools import lru_cache
+from typing import Any, Optional
 
 from .logging_config import get_logger
 
@@ -87,6 +86,7 @@ __all__ = [
 # ENUMS
 # =============================================================================
 
+
 class WorkflowCategory(str, Enum):
     TEXT_TO_IMAGE = "text-to-image"
     IMG_TO_IMG = "img-to-img"
@@ -109,53 +109,58 @@ class ParameterType(str, Enum):
 # DATA CLASSES
 # =============================================================================
 
+
 @dataclass
 class ParameterDef:
     """Definition of a workflow parameter."""
+
     type: ParameterType
     node_id: str
     input_name: str
     required: bool = False
     default: Any = None
-    min: Optional[float] = None
-    max: Optional[float] = None
-    choices: Optional[List[str]] = None
-    label: Optional[str] = None
-    description: Optional[str] = None
+    min: float | None = None
+    max: float | None = None
+    choices: list[str] | None = None
+    label: str | None = None
+    description: str | None = None
 
 
 @dataclass
 class PresetDef:
     """A preset configuration."""
+
     name: str
     description: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
 
 
 @dataclass
 class WorkflowTemplate:
     """A workflow template that can be compiled with parameters."""
+
     id: str
     name: str
     description: str
     category: WorkflowCategory
-    workflow: Dict[str, Any]
-    parameters: Dict[str, ParameterDef] = field(default_factory=dict)
-    presets: Dict[str, PresetDef] = field(default_factory=dict)
+    workflow: dict[str, Any]
+    parameters: dict[str, ParameterDef] = field(default_factory=dict)
+    presets: dict[str, PresetDef] = field(default_factory=dict)
     min_vram_gb: int = 6
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
 
 @dataclass
 class CompiledWorkflow:
     """A compiled workflow ready for execution."""
+
     template_id: str
     template_name: str
-    workflow: Dict[str, Any]
-    parameters: Dict[str, Any]
+    workflow: dict[str, Any]
+    parameters: dict[str, Any]
     is_valid: bool = True
-    warnings: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     # v2.4: Added versioning and hashing
     version: str = "1.0.0"
     workflow_hash: str = ""
@@ -171,6 +176,7 @@ class CompiledWorkflow:
 # WORKFLOW VERSIONING (2026 Best Practice: Semantic Versioning)
 # =============================================================================
 
+
 @dataclass
 class WorkflowVersion:
     """
@@ -180,6 +186,7 @@ class WorkflowVersion:
     - Minor: Backward-compatible additions (new optional parameters)
     - Patch: Bug fixes, small clarifications
     """
+
     major: int = 1
     minor: int = 0
     patch: int = 0
@@ -200,7 +207,7 @@ class WorkflowVersion:
             major=int(parts[0]) if len(parts) > 0 else 1,
             minor=int(parts[1]) if len(parts) > 1 else 0,
             patch=int(parts[2]) if len(parts) > 2 else 0,
-            label=label
+            label=label,
         )
 
     def bump_major(self) -> "WorkflowVersion":
@@ -223,15 +230,16 @@ class WorkflowSnapshot:
 
     Supports rollback, comparison, and audit trails.
     """
+
     id: str
     version: WorkflowVersion
-    workflow: Dict[str, Any]
-    parameters: Dict[str, Any]
+    workflow: dict[str, Any]
+    parameters: dict[str, Any]
     workflow_hash: str
     created_at: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize snapshot for storage."""
         return {
             "id": self.id,
@@ -244,7 +252,7 @@ class WorkflowSnapshot:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "WorkflowSnapshot":
+    def from_dict(cls, data: dict[str, Any]) -> "WorkflowSnapshot":
         """Deserialize snapshot from storage."""
         return cls(
             id=data["id"],
@@ -256,7 +264,7 @@ class WorkflowSnapshot:
             metadata=data.get("metadata", {}),
         )
 
-    def diff(self, other: "WorkflowSnapshot") -> Dict[str, Any]:
+    def diff(self, other: "WorkflowSnapshot") -> dict[str, Any]:
         """
         Compare this snapshot with another.
 
@@ -308,7 +316,7 @@ class SnapshotManager:
 
     def __init__(
         self,
-        storage_path: Optional[str] = None,
+        storage_path: str | None = None,
         max_snapshots_per_workflow: int = 10,
         auto_snapshot: bool = True,
     ):
@@ -326,6 +334,7 @@ class SnapshotManager:
             self.storage_path = Path(storage_path)
         else:
             from .config import get_temp_dir
+
             self.storage_path = get_temp_dir() / "snapshots"
 
         self.storage_path.mkdir(parents=True, exist_ok=True)
@@ -333,7 +342,7 @@ class SnapshotManager:
         self.auto_snapshot = auto_snapshot
 
         # In-memory index for quick lookups
-        self._index: Dict[str, List[str]] = {}  # workflow_id -> [snapshot_ids]
+        self._index: dict[str, list[str]] = {}  # workflow_id -> [snapshot_ids]
         self._load_index()
 
     def _load_index(self):
@@ -341,7 +350,7 @@ class SnapshotManager:
         index_file = self.storage_path / "index.json"
         if index_file.exists():
             try:
-                with open(index_file, "r") as f:
+                with open(index_file) as f:
                     self._index = json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load snapshot index: {e}")
@@ -361,6 +370,7 @@ class SnapshotManager:
     def _generate_snapshot_id(self, workflow_id: str) -> str:
         """Generate a unique snapshot ID."""
         import uuid
+
         timestamp = int(time.time())
         short_uuid = uuid.uuid4().hex[:8]
         return f"{workflow_id}_{timestamp}_{short_uuid}"
@@ -368,7 +378,7 @@ class SnapshotManager:
     def create_snapshot(
         self,
         compiled: "CompiledWorkflow",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> WorkflowSnapshot:
         """
         Create a snapshot from a compiled workflow.
@@ -418,7 +428,7 @@ class SnapshotManager:
 
         logger.debug(
             f"Created snapshot {snapshot_id} for {compiled.template_id}",
-            extra={"version": str(version), "hash": compiled.workflow_hash}
+            extra={"version": str(version), "hash": compiled.workflow_hash},
         )
 
         return snapshot
@@ -429,13 +439,13 @@ class SnapshotManager:
         with open(snapshot_file, "w") as f:
             json.dump(snapshot.to_dict(), f, indent=2)
 
-    def _load_snapshot(self, snapshot_id: str) -> Optional[WorkflowSnapshot]:
+    def _load_snapshot(self, snapshot_id: str) -> WorkflowSnapshot | None:
         """Load a snapshot from disk."""
         snapshot_file = self.storage_path / f"{snapshot_id}.json"
         if not snapshot_file.exists():
             return None
         try:
-            with open(snapshot_file, "r") as f:
+            with open(snapshot_file) as f:
                 data = json.load(f)
             return WorkflowSnapshot.from_dict(data)
         except Exception as e:
@@ -449,22 +459,22 @@ class SnapshotManager:
             return
 
         # Remove oldest snapshots
-        to_remove = snapshot_ids[:-self.max_snapshots]
+        to_remove = snapshot_ids[: -self.max_snapshots]
         for snapshot_id in to_remove:
             self.delete_snapshot(snapshot_id)
 
-        self._index[workflow_id] = snapshot_ids[-self.max_snapshots:]
+        self._index[workflow_id] = snapshot_ids[-self.max_snapshots :]
         self._save_index()
 
-    def get_snapshot(self, snapshot_id: str) -> Optional[WorkflowSnapshot]:
+    def get_snapshot(self, snapshot_id: str) -> WorkflowSnapshot | None:
         """Get a snapshot by ID."""
         return self._load_snapshot(snapshot_id)
 
     def list_snapshots(
         self,
         workflow_id: str,
-        limit: Optional[int] = None,
-    ) -> List[WorkflowSnapshot]:
+        limit: int | None = None,
+    ) -> list[WorkflowSnapshot]:
         """
         List all snapshots for a workflow.
 
@@ -487,7 +497,7 @@ class SnapshotManager:
 
         return sorted(snapshots, key=lambda s: s.created_at)
 
-    def get_latest(self, workflow_id: str) -> Optional[WorkflowSnapshot]:
+    def get_latest(self, workflow_id: str) -> WorkflowSnapshot | None:
         """Get the most recent snapshot for a workflow."""
         snapshots = self.list_snapshots(workflow_id, limit=1)
         return snapshots[-1] if snapshots else None
@@ -496,7 +506,7 @@ class SnapshotManager:
         self,
         snapshot_id: str,
         compiler: Optional["WorkflowCompiler"] = None,
-    ) -> Optional[CompiledWorkflow]:
+    ) -> CompiledWorkflow | None:
         """
         Rollback to a previous snapshot.
 
@@ -528,8 +538,7 @@ class SnapshotManager:
         )
 
         logger.info(
-            f"Rolled back to snapshot {snapshot_id}",
-            extra={"version": str(snapshot.version)}
+            f"Rolled back to snapshot {snapshot_id}", extra={"version": str(snapshot.version)}
         )
 
         return compiled
@@ -538,7 +547,7 @@ class SnapshotManager:
         self,
         snapshot_id_a: str,
         snapshot_id_b: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Compare two snapshots.
 
@@ -570,7 +579,7 @@ class SnapshotManager:
                 return False
         return False
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Get snapshot manager statistics."""
         total_snapshots = sum(len(ids) for ids in self._index.values())
         return {
@@ -583,11 +592,11 @@ class SnapshotManager:
 
 
 # Global snapshot manager instance
-_snapshot_manager: Optional[SnapshotManager] = None
+_snapshot_manager: SnapshotManager | None = None
 
 
 def get_snapshot_manager(
-    storage_path: Optional[str] = None,
+    storage_path: str | None = None,
     max_snapshots: int = 10,
 ) -> SnapshotManager:
     """Get the global snapshot manager."""
@@ -604,7 +613,8 @@ def get_snapshot_manager(
 # WORKFLOW HASHING AND CACHING
 # =============================================================================
 
-def compute_workflow_hash(workflow: Dict[str, Any]) -> str:
+
+def compute_workflow_hash(workflow: dict[str, Any]) -> str:
     """
     Compute a deterministic hash for a workflow.
 
@@ -625,22 +635,17 @@ class WorkflowCache:
     def __init__(self, max_size: int = 100, ttl_seconds: int = 300):
         self.max_size = max_size
         self.ttl_seconds = ttl_seconds
-        self._cache: Dict[str, Tuple[CompiledWorkflow, float]] = {}
-        self._access_order: List[str] = []
+        self._cache: dict[str, tuple[CompiledWorkflow, float]] = {}
+        self._access_order: list[str] = []
 
-    def _make_key(self, template_id: str, params: Dict[str, Any], preset: Optional[str]) -> str:
+    def _make_key(self, template_id: str, params: dict[str, Any], preset: str | None) -> str:
         """Create cache key from compilation inputs."""
-        params_hash = hashlib.md5(
-            json.dumps(params, sort_keys=True).encode()
-        ).hexdigest()[:8]
+        params_hash = hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()[:8]
         return f"{template_id}:{preset or 'none'}:{params_hash}"
 
     def get(
-        self,
-        template_id: str,
-        params: Dict[str, Any],
-        preset: Optional[str] = None
-    ) -> Optional[CompiledWorkflow]:
+        self, template_id: str, params: dict[str, Any], preset: str | None = None
+    ) -> CompiledWorkflow | None:
         """Get cached workflow if valid."""
         key = self._make_key(template_id, params, preset)
 
@@ -668,9 +673,9 @@ class WorkflowCache:
     def set(
         self,
         template_id: str,
-        params: Dict[str, Any],
-        preset: Optional[str],
-        workflow: CompiledWorkflow
+        params: dict[str, Any],
+        preset: str | None,
+        workflow: CompiledWorkflow,
     ):
         """Cache a compiled workflow."""
         key = self._make_key(template_id, params, preset)
@@ -686,7 +691,7 @@ class WorkflowCache:
         self._access_order.append(key)
         logger.debug(f"Cache set: {key}")
 
-    def invalidate(self, template_id: Optional[str] = None):
+    def invalidate(self, template_id: str | None = None):
         """Invalidate cache entries."""
         if template_id:
             # Invalidate specific template
@@ -702,7 +707,7 @@ class WorkflowCache:
             self._access_order.clear()
             logger.debug("Cache cleared")
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         return {
             "size": len(self._cache),
@@ -723,6 +728,7 @@ def get_workflow_cache() -> WorkflowCache:
 # =============================================================================
 # DAG VALIDATION (2026: Node-level type checking)
 # =============================================================================
+
 
 class DAGValidator:
     """
@@ -761,11 +767,11 @@ class DAGValidator:
     }
 
     # Cache for dynamically fetched node info
-    _dynamic_node_cache: Optional[Dict[str, List[str]]] = None
+    _dynamic_node_cache: dict[str, list[str]] | None = None
     _cache_timestamp: float = 0.0
     _cache_ttl: float = 300.0  # 5 minutes
 
-    def __init__(self, comfyui_url: Optional[str] = None):
+    def __init__(self, comfyui_url: str | None = None):
         """
         Initialize DAGValidator.
 
@@ -775,7 +781,7 @@ class DAGValidator:
         """
         self.comfyui_url = comfyui_url
 
-    def fetch_node_info(self, force: bool = False) -> Dict[str, List[str]]:
+    def fetch_node_info(self, force: bool = False) -> dict[str, list[str]]:
         """
         Fetch node type information from ComfyUI.
 
@@ -799,16 +805,16 @@ class DAGValidator:
 
         try:
             import requests
+
             from .config import settings
 
             response = requests.get(
-                f"{self.comfyui_url}/object_info",
-                timeout=settings.comfyui.timeout_connect
+                f"{self.comfyui_url}/object_info", timeout=settings.comfyui.timeout_connect
             )
 
             if response.status_code == 200:
                 data = response.json()
-                node_outputs: Dict[str, List[str]] = {}
+                node_outputs: dict[str, list[str]] = {}
 
                 for node_type, info in data.items():
                     # Extract output types from the node info
@@ -822,8 +828,7 @@ class DAGValidator:
                 self._cache_timestamp = time.time()
 
                 logger.debug(
-                    f"Fetched node info from ComfyUI",
-                    extra={"node_count": len(node_outputs)}
+                    "Fetched node info from ComfyUI", extra={"node_count": len(node_outputs)}
                 )
                 return node_outputs
 
@@ -833,7 +838,7 @@ class DAGValidator:
         # Fallback to static list
         return self.NODE_OUTPUTS.copy()
 
-    def get_node_outputs(self, class_type: str) -> Optional[List[str]]:
+    def get_node_outputs(self, class_type: str) -> list[str] | None:
         """Get output types for a node class."""
         # Try dynamic cache first
         if self._dynamic_node_cache and class_type in self._dynamic_node_cache:
@@ -842,7 +847,7 @@ class DAGValidator:
         # Fall back to static list
         return self.NODE_OUTPUTS.get(class_type)
 
-    def validate(self, workflow: Dict[str, Any]) -> List[str]:
+    def validate(self, workflow: dict[str, Any]) -> list[str]:
         """Validate workflow and return list of errors."""
         errors = []
 
@@ -862,10 +867,10 @@ class DAGValidator:
 
         return errors
 
-    def _check_cycles(self, workflow: Dict[str, Any]) -> Optional[str]:
+    def _check_cycles(self, workflow: dict[str, Any]) -> str | None:
         """Check for cycles in the DAG using DFS."""
         # Build adjacency list
-        graph: Dict[str, Set[str]] = {node_id: set() for node_id in workflow}
+        graph: dict[str, set[str]] = {node_id: set() for node_id in workflow}
 
         for node_id, node in workflow.items():
             if not isinstance(node, dict):
@@ -897,13 +902,12 @@ class DAGValidator:
             return False
 
         for node in graph:
-            if node not in visited:
-                if has_cycle(node):
-                    return "Workflow contains a cycle (not a valid DAG)"
+            if node not in visited and has_cycle(node):
+                return "Workflow contains a cycle (not a valid DAG)"
 
         return None
 
-    def _validate_references(self, workflow: Dict[str, Any]) -> List[str]:
+    def _validate_references(self, workflow: dict[str, Any]) -> list[str]:
         """Validate all node references exist."""
         errors = []
         node_ids = set(workflow.keys())
@@ -924,7 +928,7 @@ class DAGValidator:
 
         return errors
 
-    def _validate_node_types(self, workflow: Dict[str, Any]) -> List[str]:
+    def _validate_node_types(self, workflow: dict[str, Any]) -> list[str]:
         """Validate node class types and connections."""
         errors = []
 
@@ -941,7 +945,7 @@ class DAGValidator:
             if outputs is not None:
                 inputs = node.get("inputs", {})
 
-                for input_name, input_value in inputs.items():
+                for _input_name, input_value in inputs.items():
                     if isinstance(input_value, list) and len(input_value) == 2:
                         source_id = str(input_value[0])
                         output_idx = input_value[1]
@@ -965,10 +969,7 @@ class DAGValidator:
 _dag_validator = DAGValidator()
 
 
-def validate_workflow_dag(
-    workflow: Dict[str, Any],
-    comfyui_url: Optional[str] = None
-) -> List[str]:
+def validate_workflow_dag(workflow: dict[str, Any], comfyui_url: str | None = None) -> list[str]:
     """
     Validate workflow DAG structure.
 
@@ -1056,6 +1057,7 @@ GENERATION_PRESETS = {
 # WORKFLOW COMPILER
 # =============================================================================
 
+
 class WorkflowCompiler:
     """
     Compiles workflow templates into executable ComfyUI workflows.
@@ -1072,9 +1074,9 @@ class WorkflowCompiler:
 
     def __init__(
         self,
-        available_checkpoints: List[str] = None,
+        available_checkpoints: list[str] = None,
         use_cache: bool = True,
-        validate_dag: bool = True
+        validate_dag: bool = True,
     ):
         self.available_checkpoints = available_checkpoints or []
         self.preferred_checkpoints = [
@@ -1091,9 +1093,9 @@ class WorkflowCompiler:
     def compile(
         self,
         template: WorkflowTemplate,
-        params: Dict[str, Any],
-        preset: Optional[str] = None,
-        skip_cache: bool = False
+        params: dict[str, Any],
+        preset: str | None = None,
+        skip_cache: bool = False,
     ) -> CompiledWorkflow:
         """
         Compile a template with parameters into an executable workflow.
@@ -1151,7 +1153,7 @@ class WorkflowCompiler:
                 workflow=workflow,
                 parameters=final_params,
                 is_valid=False,
-                errors=errors
+                errors=errors,
             )
 
         # Inject parameters into workflow
@@ -1199,7 +1201,7 @@ class WorkflowCompiler:
             errors=errors,
             version="1.0.0",
             workflow_hash=compute_workflow_hash(workflow),
-            compiled_at=time.time()
+            compiled_at=time.time(),
         )
 
         # Cache successful compilations (v2.4)
@@ -1210,11 +1212,8 @@ class WorkflowCompiler:
         return compiled
 
     def _validate_value(
-        self,
-        name: str,
-        value: Any,
-        param_def: ParameterDef
-    ) -> Tuple[Any, Optional[str]]:
+        self, name: str, value: Any, param_def: ParameterDef
+    ) -> tuple[Any, str | None]:
         """Validate and coerce a parameter value."""
         warning = None
 
@@ -1265,12 +1264,7 @@ class WorkflowCompiler:
             return "dreamshaper_8.safetensors"
         return value
 
-    def _inject_parameter(
-        self,
-        workflow: Dict[str, Any],
-        param_def: ParameterDef,
-        value: Any
-    ):
+    def _inject_parameter(self, workflow: dict[str, Any], param_def: ParameterDef, value: Any):
         """Inject a parameter value into the workflow."""
         node_id = param_def.node_id
         input_name = param_def.input_name
@@ -1284,7 +1278,7 @@ class WorkflowCompiler:
 
         node["inputs"][input_name] = value
 
-    def _validate_workflow(self, workflow: Dict[str, Any]) -> List[str]:
+    def _validate_workflow(self, workflow: dict[str, Any]) -> list[str]:
         """Validate workflow structure."""
         errors = []
 
@@ -1298,14 +1292,12 @@ class WorkflowCompiler:
                 continue
 
             inputs = node.get("inputs", {})
-            for input_name, input_value in inputs.items():
+            for _input_name, input_value in inputs.items():
                 # Check if it's a connection [node_id, output_index]
                 if isinstance(input_value, list) and len(input_value) == 2:
                     source_id = str(input_value[0])
                     if source_id not in workflow:
-                        errors.append(
-                            f"Node '{node_id}' references missing node '{source_id}'"
-                        )
+                        errors.append(f"Node '{node_id}' references missing node '{source_id}'")
 
         return errors
 
@@ -1313,6 +1305,7 @@ class WorkflowCompiler:
 # =============================================================================
 # WORKFLOW OPTIMIZER
 # =============================================================================
+
 
 class WorkflowOptimizer:
     """
@@ -1326,10 +1319,8 @@ class WorkflowOptimizer:
         self.available_vram_gb = available_vram_gb
 
     def optimize(
-        self,
-        workflow: Dict[str, Any],
-        estimated_vram_gb: float
-    ) -> Tuple[Dict[str, Any], List[str]]:
+        self, workflow: dict[str, Any], estimated_vram_gb: float
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Optimize workflow for available VRAM.
 
@@ -1343,7 +1334,7 @@ class WorkflowOptimizer:
             return optimized, changes
 
         # Strategy 1: Reduce resolution
-        for node_id, node in optimized.items():
+        for _node_id, node in optimized.items():
             if not isinstance(node, dict):
                 continue
 
@@ -1367,7 +1358,9 @@ class WorkflowOptimizer:
                 if new_width != width or new_height != height:
                     inputs["width"] = new_width
                     inputs["height"] = new_height
-                    changes.append(f"Reduced resolution: {width}x{height} -> {new_width}x{new_height}")
+                    changes.append(
+                        f"Reduced resolution: {width}x{height} -> {new_width}x{new_height}"
+                    )
 
         return optimized, changes
 
@@ -1389,7 +1382,7 @@ class WorkflowOptimizer:
     # AnimateDiff/SVD add ~300MB per frame due to temporal attention
     VRAM_PER_VIDEO_FRAME_GB = 0.3
 
-    def estimate_vram(self, workflow: Dict[str, Any]) -> float:
+    def estimate_vram(self, workflow: dict[str, Any]) -> float:
         """
         Estimate VRAM requirements for a workflow.
 
@@ -1403,7 +1396,7 @@ class WorkflowOptimizer:
         """
         base_vram = self.VRAM_BASE_MODEL_GB
 
-        for node_id, node in workflow.items():
+        for _node_id, node in workflow.items():
             if not isinstance(node, dict):
                 continue
 
@@ -1428,6 +1421,7 @@ class WorkflowOptimizer:
 # =============================================================================
 # BUILT-IN TEMPLATES
 # =============================================================================
+
 
 def create_txt2img_template() -> WorkflowTemplate:
     """Create the standard text-to-image template."""
@@ -1481,21 +1475,21 @@ def create_txt2img_template() -> WorkflowTemplate:
             input_name="text",
             required=True,
             label="Prompt",
-            description="What you want to generate"
+            description="What you want to generate",
         ),
         "negative": ParameterDef(
             type=ParameterType.STRING,
             node_id="7",
             input_name="text",
             default="ugly, blurry, low quality, distorted, deformed",
-            label="Negative Prompt"
+            label="Negative Prompt",
         ),
         "checkpoint": ParameterDef(
             type=ParameterType.MODEL,
             node_id="4",
             input_name="ckpt_name",
             default="auto",
-            label="Model"
+            label="Model",
         ),
         "width": ParameterDef(
             type=ParameterType.INT,
@@ -1504,7 +1498,7 @@ def create_txt2img_template() -> WorkflowTemplate:
             default=1024,
             min=256,
             max=2048,
-            label="Width"
+            label="Width",
         ),
         "height": ParameterDef(
             type=ParameterType.INT,
@@ -1513,7 +1507,7 @@ def create_txt2img_template() -> WorkflowTemplate:
             default=1024,
             min=256,
             max=2048,
-            label="Height"
+            label="Height",
         ),
         "steps": ParameterDef(
             type=ParameterType.INT,
@@ -1522,7 +1516,7 @@ def create_txt2img_template() -> WorkflowTemplate:
             default=25,
             min=1,
             max=100,
-            label="Steps"
+            label="Steps",
         ),
         "cfg": ParameterDef(
             type=ParameterType.FLOAT,
@@ -1531,14 +1525,14 @@ def create_txt2img_template() -> WorkflowTemplate:
             default=7.0,
             min=1.0,
             max=20.0,
-            label="CFG Scale"
+            label="CFG Scale",
         ),
         "seed": ParameterDef(
             type=ParameterType.INT,
             node_id="3",
             input_name="seed",
             default=-1,
-            label="Seed (-1 = random)"
+            label="Seed (-1 = random)",
         ),
         "sampler": ParameterDef(
             type=ParameterType.CHOICE,
@@ -1546,7 +1540,7 @@ def create_txt2img_template() -> WorkflowTemplate:
             input_name="sampler_name",
             default="euler_ancestral",
             choices=["euler", "euler_ancestral", "dpmpp_2m", "dpmpp_sde", "ddim"],
-            label="Sampler"
+            label="Sampler",
         ),
         "scheduler": ParameterDef(
             type=ParameterType.CHOICE,
@@ -1554,7 +1548,7 @@ def create_txt2img_template() -> WorkflowTemplate:
             input_name="scheduler",
             default="normal",
             choices=["normal", "karras", "exponential", "sgm_uniform"],
-            label="Scheduler"
+            label="Scheduler",
         ),
     }
 
@@ -1562,27 +1556,27 @@ def create_txt2img_template() -> WorkflowTemplate:
         "draft": PresetDef(
             name="Draft",
             description="Quick preview",
-            parameters={"steps": 12, "cfg": 6.0, "width": 512, "height": 512}
+            parameters={"steps": 12, "cfg": 6.0, "width": 512, "height": 512},
         ),
         "fast": PresetDef(
             name="Fast",
             description="Good balance",
-            parameters={"steps": 20, "cfg": 7.0, "width": 768, "height": 768}
+            parameters={"steps": 20, "cfg": 7.0, "width": 768, "height": 768},
         ),
         "quality": PresetDef(
             name="Quality",
             description="High quality",
-            parameters={"steps": 30, "cfg": 7.5, "width": 1024, "height": 1024}
+            parameters={"steps": 30, "cfg": 7.5, "width": 1024, "height": 1024},
         ),
         "portrait": PresetDef(
             name="Portrait",
             description="Portrait ratio",
-            parameters={"steps": 30, "cfg": 7.0, "width": 768, "height": 1152}
+            parameters={"steps": 30, "cfg": 7.0, "width": 768, "height": 1152},
         ),
         "landscape": PresetDef(
             name="Landscape",
             description="Landscape ratio",
-            parameters={"steps": 30, "cfg": 7.0, "width": 1152, "height": 768}
+            parameters={"steps": 30, "cfg": 7.0, "width": 1152, "height": 768},
         ),
     }
 
@@ -1595,7 +1589,7 @@ def create_txt2img_template() -> WorkflowTemplate:
         parameters=parameters,
         presets=presets,
         min_vram_gb=6,
-        tags=["basic", "txt2img", "standard"]
+        tags=["basic", "txt2img", "standard"],
     )
 
 
@@ -1757,7 +1751,7 @@ def create_txt2img_hires_template() -> WorkflowTemplate:
         parameters=parameters,
         presets={},
         min_vram_gb=8,
-        tags=["hires", "upscale", "quality"]
+        tags=["hires", "upscale", "quality"],
     )
 
 
@@ -1854,7 +1848,7 @@ def create_upscale_template() -> WorkflowTemplate:
             "4x": {"width": 4096, "height": 4096},
         },
         min_vram_gb=4,
-        tags=["upscale", "enhance", "resolution"]
+        tags=["upscale", "enhance", "resolution"],
     )
 
 
@@ -2022,13 +2016,14 @@ def create_inpaint_template() -> WorkflowTemplate:
             "touch_up": {"denoise": 0.4, "steps": 15},
         },
         min_vram_gb=6,
-        tags=["inpaint", "mask", "edit", "fill"]
+        tags=["inpaint", "mask", "edit", "fill"],
     )
 
 
 # =============================================================================
 # TEMPLATE LIBRARY
 # =============================================================================
+
 
 class TemplateLibrary:
     """
@@ -2038,7 +2033,7 @@ class TemplateLibrary:
     """
 
     def __init__(self):
-        self._templates: Dict[str, WorkflowTemplate] = {}
+        self._templates: dict[str, WorkflowTemplate] = {}
         self._load_builtin()
 
     def _load_builtin(self):
@@ -2052,18 +2047,18 @@ class TemplateLibrary:
         for t in templates:
             self._templates[t.id] = t
 
-    def get(self, template_id: str) -> Optional[WorkflowTemplate]:
+    def get(self, template_id: str) -> WorkflowTemplate | None:
         """Get a template by ID."""
         return self._templates.get(template_id)
 
-    def list_all(self, category: Optional[WorkflowCategory] = None) -> List[WorkflowTemplate]:
+    def list_all(self, category: WorkflowCategory | None = None) -> list[WorkflowTemplate]:
         """List all templates, optionally filtered by category."""
         templates = list(self._templates.values())
         if category:
             templates = [t for t in templates if t.category == category]
         return sorted(templates, key=lambda t: t.name)
 
-    def list_presets(self) -> Dict[str, Dict[str, Any]]:
+    def list_presets(self) -> dict[str, dict[str, Any]]:
         """List all generation presets."""
         return GENERATION_PRESETS.copy()
 
@@ -2071,7 +2066,7 @@ class TemplateLibrary:
         """Add a custom template."""
         self._templates[template.id] = template
 
-    def get_for_intent(self, intent: str, styles: List[str] = None) -> WorkflowTemplate:
+    def get_for_intent(self, intent: str, styles: list[str] = None) -> WorkflowTemplate:
         """
         Get the best template for a given intent and styles.
 
@@ -2079,9 +2074,7 @@ class TemplateLibrary:
         we pick the right workflow automatically.
         """
         # Simple matching for now - can be enhanced with ML
-        if intent in ["portrait", "character"]:
-            return self.get("txt2img_standard")
-        elif intent in ["landscape", "architecture"]:
+        if intent in ["portrait", "character"] or intent in ["landscape", "architecture"]:
             return self.get("txt2img_standard")
         elif "quality" in (styles or []) or "detailed" in (styles or []):
             return self.get("txt2img_hires")
@@ -2094,12 +2087,12 @@ class TemplateLibrary:
 # SINGLETON INSTANCES
 # =============================================================================
 
-_compiler: Optional[WorkflowCompiler] = None
-_library: Optional[TemplateLibrary] = None
-_optimizer: Optional[WorkflowOptimizer] = None
+_compiler: WorkflowCompiler | None = None
+_library: TemplateLibrary | None = None
+_optimizer: WorkflowOptimizer | None = None
 
 
-def get_compiler(checkpoints: List[str] = None) -> WorkflowCompiler:
+def get_compiler(checkpoints: list[str] = None) -> WorkflowCompiler:
     """Get the workflow compiler."""
     global _compiler
     if _compiler is None:
@@ -2129,12 +2122,13 @@ def get_optimizer(vram_gb: float = 8.0) -> WorkflowOptimizer:
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
+
 def compile_workflow(
     prompt: str,
     negative: str = "",
     preset: str = "quality",
     template_id: str = "txt2img_standard",
-    **kwargs
+    **kwargs,
 ) -> CompiledWorkflow:
     """
     High-level workflow compilation.
@@ -2156,17 +2150,17 @@ def compile_workflow(
     params = {
         "prompt": prompt,
         "negative": negative or "ugly, blurry, low quality, distorted",
-        **kwargs
+        **kwargs,
     }
 
     return compiler.compile(template, params, preset=preset)
 
 
-def get_preset_info(preset_name: str) -> Optional[Dict[str, Any]]:
+def get_preset_info(preset_name: str) -> dict[str, Any] | None:
     """Get information about a preset."""
     return GENERATION_PRESETS.get(preset_name)
 
 
-def list_presets() -> List[str]:
+def list_presets() -> list[str]:
     """List available preset names."""
     return list(GENERATION_PRESETS.keys())

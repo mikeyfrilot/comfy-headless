@@ -19,7 +19,6 @@ Color Palette: Ocean Mist
 
 import gradio as gr
 from gradio.themes import colors, sizes
-from gradio.themes.utils import fonts
 
 # =============================================================================
 # OCEAN MIST PASTEL COLORS
@@ -27,63 +26,63 @@ from gradio.themes.utils import fonts
 
 # Background hierarchy (Ocean Mist dark mode)
 DARK_COLORS = {
-    "background": "#141618",           # Deep slate
-    "surface": "#232830",              # Storm gray
-    "surface_alt": "#2D3540",          # Lighter storm
-    "input_bg": "#232830",             # Match surface
-    "border": "#3A4554",               # Steel blue border
-    "border_focus": "#7EC8C8",         # Pastel teal
-    "text_primary": "#F0F4F8",         # Ice white
-    "text_secondary": "#B0BEC5",       # Muted ice
-    "text_muted": "#78909C",           # Cool gray
+    "background": "#141618",  # Deep slate
+    "surface": "#232830",  # Storm gray
+    "surface_alt": "#2D3540",  # Lighter storm
+    "input_bg": "#232830",  # Match surface
+    "border": "#3A4554",  # Steel blue border
+    "border_focus": "#7EC8C8",  # Pastel teal
+    "text_primary": "#F0F4F8",  # Ice white
+    "text_secondary": "#B0BEC5",  # Muted ice
+    "text_muted": "#78909C",  # Cool gray
 }
 
 # Light mode (Ocean Mist light)
 LIGHT_COLORS = {
-    "background": "#F0F4F8",           # Ice white
-    "surface": "#FFFFFF",              # Pure white
-    "surface_alt": "#E8EEF2",          # Light mist
-    "border": "#B0BEC5",               # Cool border
-    "border_focus": "#5BA3A3",         # Deeper teal
-    "text_primary": "#1A2530",         # Deep slate text
-    "text_secondary": "#546E7A",       # Muted slate
-    "text_muted": "#90A4AE",           # Light muted
+    "background": "#F0F4F8",  # Ice white
+    "surface": "#FFFFFF",  # Pure white
+    "surface_alt": "#E8EEF2",  # Light mist
+    "border": "#B0BEC5",  # Cool border
+    "border_focus": "#5BA3A3",  # Deeper teal
+    "text_primary": "#1A2530",  # Deep slate text
+    "text_secondary": "#546E7A",  # Muted slate
+    "text_muted": "#90A4AE",  # Light muted
 }
 
 # Ocean Mist Accent Colors
 ACCENT = {
-    "blue": "#7EC8C8",                 # Pastel teal (primary dark)
-    "blue_light": "#5BA3A3",           # Deeper teal (primary light)
-    "green": "#98D4BB",                # Seafoam
-    "red": "#E57373",                  # Soft coral
-    "orange": "#FFB74D",               # Warm sand
-    "purple": "#B39DDB",               # Soft lavender
-    "pink": "#F48FB1",                 # Soft rose
-    "teal": "#A8C5E2",                 # Powder blue
-    "yellow": "#FFF176",               # Soft lemon
-    "indigo": "#9FA8DA",               # Soft periwinkle
+    "blue": "#7EC8C8",  # Pastel teal (primary dark)
+    "blue_light": "#5BA3A3",  # Deeper teal (primary light)
+    "green": "#98D4BB",  # Seafoam
+    "red": "#E57373",  # Soft coral
+    "orange": "#FFB74D",  # Warm sand
+    "purple": "#B39DDB",  # Soft lavender
+    "pink": "#F48FB1",  # Soft rose
+    "teal": "#A8C5E2",  # Powder blue
+    "yellow": "#FFF176",  # Soft lemon
+    "indigo": "#9FA8DA",  # Soft periwinkle
 }
 
 # Ocean Mist Gray scale
 GRAYS = {
-    "gray": "#90A4AE",                 # Cool gray
-    "gray2": "#78909C",                # Medium cool
-    "gray3": "#546E7A",                # Deep cool
-    "gray4": "#3A4554",                # Steel blue
-    "gray5": "#2D3540",                # Storm gray light
-    "gray6": "#232830",                # Storm gray
+    "gray": "#90A4AE",  # Cool gray
+    "gray2": "#78909C",  # Medium cool
+    "gray3": "#546E7A",  # Deep cool
+    "gray4": "#3A4554",  # Steel blue
+    "gray5": "#2D3540",  # Storm gray light
+    "gray6": "#232830",  # Storm gray
 }
 
 # Semantic Colors (Ocean Mist style)
 SEMANTIC = {
-    "success": "#98D4BB",              # Seafoam
+    "success": "#98D4BB",  # Seafoam
     "success_dark": "#98D4BB",
-    "error": "#E57373",                # Soft coral
+    "error": "#E57373",  # Soft coral
     "error_dark": "#E57373",
-    "warning": "#FFB74D",              # Warm sand
+    "warning": "#FFB74D",  # Warm sand
     "warning_dark": "#FFB74D",
-    "info": "#A8C5E2",                 # Powder blue
-    "info_dark": "#7EC8C8",            # Pastel teal
+    "info": "#A8C5E2",  # Powder blue
+    "info_dark": "#7EC8C8",  # Pastel teal
 }
 
 
@@ -609,6 +608,7 @@ select:disabled {
 # THEME BUILDER FUNCTIONS
 # =============================================================================
 
+
 def create_comfy_theme() -> gr.themes.Base:
     """
     Create Ocean Mist theme - pastel Apple-inspired palette.
@@ -627,25 +627,13 @@ def create_comfy_theme() -> gr.themes.Base:
         primary_hue=colors.cyan,
         secondary_hue=colors.slate,
         neutral_hue=colors.slate,
-
         # Sizing - Apple 8pt grid
         spacing_size=sizes.spacing_md,
         radius_size=sizes.radius_md,
         text_size=sizes.text_md,
-
         # Typography - SF Pro system font
-        font=[
-            "-apple-system",
-            "BlinkMacSystemFont",
-            "SF Pro Display",
-            "system-ui",
-            "sans-serif"
-        ],
-        font_mono=[
-            "SF Mono",
-            "ui-monospace",
-            "monospace"
-        ],
+        font=["-apple-system", "BlinkMacSystemFont", "SF Pro Display", "system-ui", "sans-serif"],
+        font_mono=["SF Mono", "ui-monospace", "monospace"],
     )
 
     # Apply Ocean Mist color overrides
@@ -655,86 +643,67 @@ def create_comfy_theme() -> gr.themes.Base:
         # =================================================================
         body_background_fill=LIGHT_COLORS["background"],
         body_background_fill_dark=DARK_COLORS["background"],  # Deep slate #141618
-
         block_background_fill=LIGHT_COLORS["surface"],
         block_background_fill_dark=DARK_COLORS["surface"],  # Storm gray #232830
-
         background_fill_secondary=LIGHT_COLORS["surface_alt"],
         background_fill_secondary_dark=DARK_COLORS["surface_alt"],  # #2D3540
-
         # =================================================================
         # BORDERS (Ocean Mist Separators)
         # =================================================================
         block_border_width="1px",
         block_border_color=LIGHT_COLORS["border"],
         block_border_color_dark=DARK_COLORS["border"],  # Steel blue #3A4554
-
         border_color_primary=LIGHT_COLORS["border"],
         border_color_primary_dark=DARK_COLORS["border"],
-
         # =================================================================
         # TEXT COLORS (Ocean Mist Labels)
         # =================================================================
         body_text_color=LIGHT_COLORS["text_primary"],
         body_text_color_dark=DARK_COLORS["text_primary"],  # Ice white #F0F4F8
-
         body_text_color_subdued=LIGHT_COLORS["text_secondary"],
         body_text_color_subdued_dark=DARK_COLORS["text_secondary"],
-
         # =================================================================
         # PRIMARY BUTTONS (Soft Teal - NOT orange!)
         # =================================================================
         button_primary_background_fill="#5BA3A3",  # Soft teal
         button_primary_background_fill_dark="#5BA3A3",  # Soft teal (same for dark)
-
         button_primary_background_fill_hover="#6BB8B8",  # Lighter teal on hover
         button_primary_background_fill_hover_dark="#6BB8B8",
-
         button_primary_text_color="#FFFFFF",  # White text
         button_primary_text_color_dark="#FFFFFF",  # White text
-
         button_primary_border_color="transparent",
         button_primary_border_color_dark="transparent",
-
         # =================================================================
         # SECONDARY BUTTONS (Steel Blue Gray)
         # =================================================================
         button_secondary_background_fill=LIGHT_COLORS["surface"],
         button_secondary_background_fill_dark=GRAYS["gray4"],  # Steel blue #3A4554
-
         button_secondary_text_color=LIGHT_COLORS["text_primary"],
         button_secondary_text_color_dark=DARK_COLORS["text_primary"],
-
         button_secondary_border_color=LIGHT_COLORS["border"],
         button_secondary_border_color_dark=DARK_COLORS["border"],
-
         # =================================================================
         # SHADOWS (Subtle for Ocean Mist)
         # =================================================================
         block_shadow="0 1px 3px rgba(0, 0, 0, 0.06)",
         block_shadow_dark="0 1px 4px rgba(0, 0, 0, 0.3)",
-
         # =================================================================
         # INPUT FOCUS STATES (Pastel Teal)
         # =================================================================
         input_border_color_focus=ACCENT["blue_light"],
         input_border_color_focus_dark=ACCENT["blue"],
-
         # =================================================================
         # LINK COLORS (Powder Blue)
         # =================================================================
         link_text_color=ACCENT["blue_light"],
         link_text_color_dark=ACCENT["teal"],  # Powder blue #A8C5E2
-
         link_text_color_hover="#6BB8B8",
         link_text_color_hover_dark="#8AD4D4",
-
         # =================================================================
         # FORM ELEMENTS (Pastel Teal)
         # =================================================================
         checkbox_background_color_selected=ACCENT["blue_light"],
         checkbox_background_color_selected_dark=ACCENT["blue"],
-
         slider_color=ACCENT["blue_light"],
         slider_color_dark=ACCENT["blue"],
     )

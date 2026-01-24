@@ -9,12 +9,11 @@ Covers:
 - save_temp_image/save_temp_video functions
 """
 
-import pytest
-import time
 import tempfile
 import threading
+import time
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestTempFileManagerInitialization:
@@ -46,10 +45,7 @@ class TestTempFileManagerInitialization:
         """Manager accepts custom settings."""
         from comfy_headless.cleanup import TempFileManager
 
-        manager = TempFileManager(
-            auto_cleanup=False,
-            max_age_seconds=1800.0
-        )
+        manager = TempFileManager(auto_cleanup=False, max_age_seconds=1800.0)
 
         assert manager.auto_cleanup is False
         assert manager.max_age_seconds == 1800.0
@@ -60,7 +56,7 @@ class TestTempFileManagerInitialization:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             nested = Path(tmpdir) / "a" / "b" / "c"
-            manager = TempFileManager(base_dir=nested)
+            TempFileManager(base_dir=nested)
 
             assert nested.exists()
 
@@ -119,7 +115,7 @@ class TestTempFileManagerCreateFile:
 
             assert manager.get_tracked_count() == 0
 
-            path = manager.create_temp_file(".txt")
+            manager.create_temp_file(".txt")
 
             assert manager.get_tracked_count() == 1
 
@@ -212,7 +208,7 @@ class TestTempFileManagerCleanup:
             manager = TempFileManager(
                 base_dir=Path(tmpdir),
                 auto_cleanup=False,
-                max_age_seconds=0.1  # Very short for testing
+                max_age_seconds=0.1,  # Very short for testing
             )
 
             path1 = manager.create_temp_file(".txt")
@@ -220,6 +216,7 @@ class TestTempFileManagerCleanup:
             # Make file old by modifying mtime
             old_time = time.time() - 1.0  # 1 second ago
             import os
+
             os.utime(path1, (old_time, old_time))
 
             manager.cleanup_old()
@@ -235,7 +232,7 @@ class TestTempFileManagerCleanup:
             manager = TempFileManager(
                 base_dir=Path(tmpdir),
                 auto_cleanup=False,
-                max_age_seconds=3600.0  # 1 hour
+                max_age_seconds=3600.0,  # 1 hour
             )
 
             path = manager.create_temp_file(".txt")
@@ -398,7 +395,7 @@ class TestSaveTempImage:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Mock get_temp_manager
-            with patch('comfy_headless.cleanup.get_temp_manager') as mock_manager:
+            with patch("comfy_headless.cleanup.get_temp_manager") as mock_manager:
                 mock_instance = MagicMock()
                 mock_instance.create_temp_file.return_value = Path(tmpdir) / "test.png"
                 mock_manager.return_value = mock_instance
@@ -417,7 +414,7 @@ class TestSaveTempVideo:
         from comfy_headless.cleanup import save_temp_video
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch('comfy_headless.cleanup.get_temp_manager') as mock_manager:
+            with patch("comfy_headless.cleanup.get_temp_manager") as mock_manager:
                 mock_instance = MagicMock()
                 mock_instance.create_temp_file.return_value = Path(tmpdir) / "test.mp4"
                 mock_manager.return_value = mock_instance
@@ -432,7 +429,7 @@ class TestGetTempManager:
 
     def test_get_temp_manager_returns_manager(self):
         """get_temp_manager returns TempFileManager instance."""
-        from comfy_headless.cleanup import get_temp_manager, TempFileManager
+        from comfy_headless.cleanup import TempFileManager, get_temp_manager
 
         manager = get_temp_manager()
         assert isinstance(manager, TempFileManager)
@@ -475,11 +472,11 @@ class TestRegisterShutdownHandlers:
         """register_shutdown_handlers registers atexit handler."""
         from comfy_headless.cleanup import register_shutdown_handlers
 
-        with patch('atexit.register') as mock_register:
+        with patch("atexit.register"):
             register_shutdown_handlers()
 
             # Should register something
-            assert mock_register.called or True  # May already be registered
+            assert True  # May already be registered
 
 
 class TestRegisterCleanupCallback:
@@ -562,10 +559,11 @@ class TestEdgeCases:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             base = Path(tmpdir) / "subdir"
-            manager = TempFileManager(base_dir=base, auto_cleanup=False)
+            TempFileManager(base_dir=base, auto_cleanup=False)
 
             # Delete the base dir
             import shutil
+
             shutil.rmtree(base)
 
             # Creating file should recreate dir or fail gracefully

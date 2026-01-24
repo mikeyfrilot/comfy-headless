@@ -1,6 +1,5 @@
 """Tests for workflows module."""
 
-import pytest
 
 
 class TestGenerationPresets:
@@ -61,7 +60,7 @@ class TestDAGValidator:
                 "class_type": "KSampler",
                 "inputs": {
                     "model": ["999", 0],  # Reference to non-existent node
-                }
+                },
             }
         }
 

@@ -1,10 +1,7 @@
 """Extended tests for health module to improve coverage."""
 
-import pytest
-from unittest.mock import patch, MagicMock
-import tempfile
-from pathlib import Path
 import time
+from unittest.mock import MagicMock, patch
 
 
 class TestHealthStatusEnum:
@@ -27,11 +24,7 @@ class TestComponentHealthDataclass:
         """Test is_healthy property returns True for HEALTHY status."""
         from comfy_headless.health import ComponentHealth, HealthStatus
 
-        health = ComponentHealth(
-            name="test",
-            status=HealthStatus.HEALTHY,
-            message="OK"
-        )
+        health = ComponentHealth(name="test", status=HealthStatus.HEALTHY, message="OK")
         assert health.is_healthy is True
 
     def test_component_health_is_healthy_false(self):
@@ -51,7 +44,7 @@ class TestComponentHealthDataclass:
             status=HealthStatus.HEALTHY,
             message="OK",
             latency_ms=50.5,
-            details={"key": "value"}
+            details={"key": "value"},
         )
         result = health.to_dict()
 
@@ -91,13 +84,10 @@ class TestHealthReportDataclass:
 
     def test_health_report_to_dict(self):
         """Test to_dict method."""
-        from comfy_headless.health import HealthReport, HealthStatus, ComponentHealth
+        from comfy_headless.health import ComponentHealth, HealthReport, HealthStatus
 
         component = ComponentHealth(name="comp1", status=HealthStatus.HEALTHY)
-        report = HealthReport(
-            status=HealthStatus.HEALTHY,
-            components=[component]
-        )
+        report = HealthReport(status=HealthStatus.HEALTHY, components=[component])
         result = report.to_dict()
 
         assert result["status"] == "healthy"
@@ -110,19 +100,21 @@ class TestHealthReportDataclass:
 class TestComfyUIHealthCheck:
     """Test check_comfyui_health function."""
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_comfyui_healthy_with_devices(self, mock_get):
         """Test ComfyUI healthy response with GPU info."""
-        from comfy_headless.health import check_comfyui_health, HealthStatus
+        from comfy_headless.health import HealthStatus, check_comfyui_health
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "devices": [{
-                "name": "RTX 4090",
-                "vram_total": 24 * 1024 * 1024 * 1024,
-                "vram_free": 20 * 1024 * 1024 * 1024
-            }]
+            "devices": [
+                {
+                    "name": "RTX 4090",
+                    "vram_total": 24 * 1024 * 1024 * 1024,
+                    "vram_free": 20 * 1024 * 1024 * 1024,
+                }
+            ]
         }
         mock_get.return_value = mock_response
 
@@ -130,10 +122,10 @@ class TestComfyUIHealthCheck:
         assert result.status == HealthStatus.HEALTHY
         assert "gpu" in result.details
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_comfyui_healthy_no_devices(self, mock_get):
         """Test ComfyUI healthy response without devices."""
-        from comfy_headless.health import check_comfyui_health, HealthStatus
+        from comfy_headless.health import HealthStatus, check_comfyui_health
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -143,10 +135,10 @@ class TestComfyUIHealthCheck:
         result = check_comfyui_health()
         assert result.status == HealthStatus.HEALTHY
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_comfyui_non_200_response(self, mock_get):
         """Test ComfyUI non-200 response."""
-        from comfy_headless.health import check_comfyui_health, HealthStatus
+        from comfy_headless.health import HealthStatus, check_comfyui_health
 
         mock_response = MagicMock()
         mock_response.status_code = 500
@@ -156,11 +148,12 @@ class TestComfyUIHealthCheck:
         assert result.status == HealthStatus.UNHEALTHY
         assert "500" in result.message
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_comfyui_timeout(self, mock_get):
         """Test ComfyUI timeout."""
-        from comfy_headless.health import check_comfyui_health, HealthStatus
         import requests
+
+        from comfy_headless.health import HealthStatus, check_comfyui_health
 
         mock_get.side_effect = requests.exceptions.Timeout()
 
@@ -168,11 +161,12 @@ class TestComfyUIHealthCheck:
         assert result.status == HealthStatus.UNHEALTHY
         assert "timeout" in result.message.lower()
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_comfyui_connection_refused(self, mock_get):
         """Test ComfyUI connection refused."""
-        from comfy_headless.health import check_comfyui_health, HealthStatus
         import requests
+
+        from comfy_headless.health import HealthStatus, check_comfyui_health
 
         mock_get.side_effect = requests.exceptions.ConnectionError()
 
@@ -180,10 +174,10 @@ class TestComfyUIHealthCheck:
         assert result.status == HealthStatus.UNHEALTHY
         assert "not running" in result.message.lower()
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_comfyui_generic_exception(self, mock_get):
         """Test ComfyUI generic exception."""
-        from comfy_headless.health import check_comfyui_health, HealthStatus
+        from comfy_headless.health import HealthStatus, check_comfyui_health
 
         mock_get.side_effect = Exception("Unknown error")
 
@@ -194,45 +188,41 @@ class TestComfyUIHealthCheck:
 class TestOllamaHealthCheck:
     """Test check_ollama_health function."""
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_ollama_healthy_with_model(self, mock_get):
         """Test Ollama healthy with required model."""
-        from comfy_headless.health import check_ollama_health, HealthStatus
+        from comfy_headless.health import HealthStatus, check_ollama_health
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "models": [
-                {"name": "qwen2.5:7b"},
-                {"name": "llama3:8b"}
-            ]
+            "models": [{"name": "qwen2.5:7b"}, {"name": "llama3:8b"}]
         }
         mock_get.return_value = mock_response
 
         result = check_ollama_health()
         assert result.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_ollama_degraded_missing_model(self, mock_get):
         """Test Ollama degraded when model missing."""
-        from comfy_headless.health import check_ollama_health, HealthStatus
+        from comfy_headless.health import HealthStatus, check_ollama_health
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "models": [{"name": "other_model:latest"}]
-        }
+        mock_response.json.return_value = {"models": [{"name": "other_model:latest"}]}
         mock_get.return_value = mock_response
 
         # This may be DEGRADED if the preferred model isn't found
         result = check_ollama_health()
         assert result.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_ollama_connection_refused(self, mock_get):
         """Test Ollama connection refused."""
-        from comfy_headless.health import check_ollama_health, HealthStatus
         import requests
+
+        from comfy_headless.health import HealthStatus, check_ollama_health
 
         mock_get.side_effect = requests.exceptions.ConnectionError()
 
@@ -245,39 +235,39 @@ class TestDiskSpaceCheck:
 
     def test_disk_space_check_runs(self):
         """Test disk space check completes."""
-        from comfy_headless.health import check_disk_space, HealthStatus
+        from comfy_headless.health import HealthStatus, check_disk_space
 
         result = check_disk_space()
         assert result.name == "disk"
-        assert result.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED, HealthStatus.UNHEALTHY]
+        assert result.status in [
+            HealthStatus.HEALTHY,
+            HealthStatus.DEGRADED,
+            HealthStatus.UNHEALTHY,
+        ]
         assert "free_gb" in result.details
 
-    @patch('shutil.disk_usage')
+    @patch("shutil.disk_usage")
     def test_disk_space_critical(self, mock_usage):
         """Test disk space critical (< 1GB free)."""
-        from comfy_headless.health import check_disk_space, HealthStatus
+        from comfy_headless.health import HealthStatus, check_disk_space
 
         # Simulate < 1GB free
         mock_usage.return_value = MagicMock(
-            total=100 * 1024**3,
-            used=99.5 * 1024**3,
-            free=0.5 * 1024**3
+            total=100 * 1024**3, used=99.5 * 1024**3, free=0.5 * 1024**3
         )
 
         result = check_disk_space()
         assert result.status == HealthStatus.UNHEALTHY
         assert "critical" in result.message.lower()
 
-    @patch('shutil.disk_usage')
+    @patch("shutil.disk_usage")
     def test_disk_space_low(self, mock_usage):
         """Test disk space low (< 5GB free)."""
-        from comfy_headless.health import check_disk_space, HealthStatus
+        from comfy_headless.health import HealthStatus, check_disk_space
 
         # Simulate 3GB free
         mock_usage.return_value = MagicMock(
-            total=100 * 1024**3,
-            used=97 * 1024**3,
-            free=3 * 1024**3
+            total=100 * 1024**3, used=97 * 1024**3, free=3 * 1024**3
         )
 
         result = check_disk_space()
@@ -294,30 +284,22 @@ class TestMemoryCheck:
         result = check_memory()
         assert result.name == "memory"
 
-    @patch('psutil.virtual_memory')
+    @patch("psutil.virtual_memory")
     def test_memory_critical(self, mock_mem):
         """Test memory critical (< 1GB available)."""
-        from comfy_headless.health import check_memory, HealthStatus
+        from comfy_headless.health import HealthStatus, check_memory
 
-        mock_mem.return_value = MagicMock(
-            total=16 * 1024**3,
-            available=0.5 * 1024**3,
-            percent=97
-        )
+        mock_mem.return_value = MagicMock(total=16 * 1024**3, available=0.5 * 1024**3, percent=97)
 
         result = check_memory()
         assert result.status == HealthStatus.UNHEALTHY
 
-    @patch('psutil.virtual_memory')
+    @patch("psutil.virtual_memory")
     def test_memory_low(self, mock_mem):
         """Test memory low (< 4GB available)."""
-        from comfy_headless.health import check_memory, HealthStatus
+        from comfy_headless.health import HealthStatus, check_memory
 
-        mock_mem.return_value = MagicMock(
-            total=16 * 1024**3,
-            available=2 * 1024**3,
-            percent=87
-        )
+        mock_mem.return_value = MagicMock(total=16 * 1024**3, available=2 * 1024**3, percent=87)
 
         result = check_memory()
         assert result.status == HealthStatus.DEGRADED
@@ -351,7 +333,7 @@ class TestHealthChecker:
 
     def test_check_specific_component(self):
         """Test checking a specific component."""
-        from comfy_headless.health import HealthChecker, ComponentHealth
+        from comfy_headless.health import ComponentHealth, HealthChecker
 
         checker = HealthChecker()
         result = checker.check("disk")
@@ -388,7 +370,7 @@ class TestHealthChecker:
 
     def test_compute_overall_status_all_healthy(self):
         """Test _compute_overall_status with all healthy components."""
-        from comfy_headless.health import HealthChecker, ComponentHealth, HealthStatus
+        from comfy_headless.health import ComponentHealth, HealthChecker, HealthStatus
 
         checker = HealthChecker()
         components = [
@@ -400,7 +382,7 @@ class TestHealthChecker:
 
     def test_compute_overall_status_with_degraded(self):
         """Test _compute_overall_status with degraded component."""
-        from comfy_headless.health import HealthChecker, ComponentHealth, HealthStatus
+        from comfy_headless.health import ComponentHealth, HealthChecker, HealthStatus
 
         checker = HealthChecker()
         components = [
@@ -412,7 +394,7 @@ class TestHealthChecker:
 
     def test_compute_overall_status_with_unhealthy(self):
         """Test _compute_overall_status with unhealthy component."""
-        from comfy_headless.health import HealthChecker, ComponentHealth, HealthStatus
+        from comfy_headless.health import ComponentHealth, HealthChecker, HealthStatus
 
         checker = HealthChecker()
         components = [
@@ -424,7 +406,7 @@ class TestHealthChecker:
 
     def test_compute_overall_status_comfyui_unhealthy(self):
         """Test _compute_overall_status when ComfyUI is unhealthy."""
-        from comfy_headless.health import HealthChecker, ComponentHealth, HealthStatus
+        from comfy_headless.health import ComponentHealth, HealthChecker, HealthStatus
 
         checker = HealthChecker()
         components = [
@@ -516,10 +498,7 @@ class TestHealthMonitor:
         def on_unhealthy(report):
             callback_called.append(report)
 
-        monitor = HealthMonitor(
-            interval=0.1,
-            on_unhealthy=on_unhealthy
-        )
+        monitor = HealthMonitor(interval=0.1, on_unhealthy=on_unhealthy)
         assert monitor.on_unhealthy is not None
 
 
@@ -536,14 +515,14 @@ class TestConvenienceFunctions:
 
     def test_check_health_returns_report(self):
         """Test check_health returns HealthReport."""
-        from comfy_headless.health import check_health, HealthReport
+        from comfy_headless.health import HealthReport, check_health
 
         report = check_health()
         assert isinstance(report, HealthReport)
 
     def test_full_health_check_returns_report(self):
         """Test full_health_check returns HealthReport."""
-        from comfy_headless.health import full_health_check, HealthReport
+        from comfy_headless.health import HealthReport, full_health_check
 
         report = full_health_check()
         assert isinstance(report, HealthReport)

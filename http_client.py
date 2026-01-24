@@ -26,14 +26,12 @@ Usage:
     from comfy_headless.http_client import get_http_client, get_async_http_client
 """
 
-from typing import Optional, Dict, Any, Union
-from contextlib import contextmanager
-import json
+from typing import Any
 
 from .config import settings
-from .logging_config import get_logger
-from .retry import get_circuit_breaker, retry_with_backoff, retry_async
 from .exceptions import ComfyUIConnectionError
+from .logging_config import get_logger
+from .retry import get_circuit_breaker
 
 logger = get_logger(__name__)
 
@@ -54,6 +52,7 @@ __all__ = [
 # Try to import httpx, fall back to requests
 try:
     import httpx
+
     HTTPX_AVAILABLE = True
 except ImportError:
     HTTPX_AVAILABLE = False
@@ -62,6 +61,7 @@ except ImportError:
 # Fallback to requests if httpx unavailable
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -71,6 +71,7 @@ except ImportError:
 # =============================================================================
 # SYNC HTTP CLIENT
 # =============================================================================
+
 
 class HttpClient:
     """
@@ -91,8 +92,8 @@ class HttpClient:
     def __init__(
         self,
         base_url: str,
-        timeout: Optional[float] = None,
-        circuit_name: Optional[str] = None,
+        timeout: float | None = None,
+        circuit_name: str | None = None,
     ):
         """
         Initialize HTTP client.
@@ -105,11 +106,10 @@ class HttpClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout or settings.http.read_timeout
         self._circuit = get_circuit_breaker(circuit_name) if circuit_name else None
-        self._client: Optional[Any] = None
+        self._client: Any | None = None
 
         logger.debug(
-            f"HttpClient initialized",
-            extra={"base_url": self.base_url, "httpx": HTTPX_AVAILABLE}
+            "HttpClient initialized", extra={"base_url": self.base_url, "httpx": HTTPX_AVAILABLE}
         )
 
     @property
@@ -139,11 +139,7 @@ class HttpClient:
         return self._client
 
     def _request(
-        self,
-        method: str,
-        endpoint: str,
-        timeout: Optional[float] = None,
-        **kwargs
+        self, method: str, endpoint: str, timeout: float | None = None, **kwargs
     ) -> Any:
         """
         Make an HTTP request with circuit breaker protection.
@@ -174,12 +170,7 @@ class HttpClient:
                 return make_request()
 
         except Exception as e:
-            if HTTPX_AVAILABLE and isinstance(e, httpx.ConnectError):
-                raise ComfyUIConnectionError(
-                    f"Failed to connect to {self.base_url}: {e}",
-                    url=self.base_url,
-                )
-            elif REQUESTS_AVAILABLE and isinstance(e, requests.exceptions.ConnectionError):
+            if HTTPX_AVAILABLE and isinstance(e, httpx.ConnectError) or REQUESTS_AVAILABLE and isinstance(e, requests.exceptions.ConnectionError):
                 raise ComfyUIConnectionError(
                     f"Failed to connect to {self.base_url}: {e}",
                     url=self.base_url,
@@ -202,7 +193,7 @@ class HttpClient:
         """Make a DELETE request."""
         return self._request("DELETE", endpoint, **kwargs)
 
-    def post_json(self, endpoint: str, data: Dict, **kwargs) -> Any:
+    def post_json(self, endpoint: str, data: dict, **kwargs) -> Any:
         """Make a POST request with JSON body."""
         if HTTPX_AVAILABLE:
             return self._request("POST", endpoint, json=data, **kwargs)
@@ -227,6 +218,7 @@ class HttpClient:
 # ASYNC HTTP CLIENT
 # =============================================================================
 
+
 class AsyncHttpClient:
     """
     Modern async HTTP client using httpx.
@@ -246,8 +238,8 @@ class AsyncHttpClient:
     def __init__(
         self,
         base_url: str,
-        timeout: Optional[float] = None,
-        circuit_name: Optional[str] = None,
+        timeout: float | None = None,
+        circuit_name: str | None = None,
     ):
         """
         Initialize async HTTP client.
@@ -258,14 +250,16 @@ class AsyncHttpClient:
             circuit_name: Name for circuit breaker (None to disable)
         """
         if not HTTPX_AVAILABLE:
-            raise ImportError("httpx is required for async HTTP client. Install with: pip install httpx")
+            raise ImportError(
+                "httpx is required for async HTTP client. Install with: pip install httpx"
+            )
 
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout or settings.http.read_timeout
         self._circuit = get_circuit_breaker(circuit_name) if circuit_name else None
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
-        logger.debug(f"AsyncHttpClient initialized", extra={"base_url": self.base_url})
+        logger.debug("AsyncHttpClient initialized", extra={"base_url": self.base_url})
 
     @property
     def client(self) -> "httpx.AsyncClient":
@@ -289,11 +283,7 @@ class AsyncHttpClient:
         return self._client
 
     async def _request(
-        self,
-        method: str,
-        endpoint: str,
-        timeout: Optional[float] = None,
-        **kwargs
+        self, method: str, endpoint: str, timeout: float | None = None, **kwargs
     ) -> httpx.Response:
         """Make an async HTTP request with circuit breaker protection."""
         _timeout = timeout or self.timeout
@@ -330,7 +320,7 @@ class AsyncHttpClient:
         """Make a DELETE request."""
         return await self._request("DELETE", endpoint, **kwargs)
 
-    async def post_json(self, endpoint: str, data: Dict, **kwargs) -> httpx.Response:
+    async def post_json(self, endpoint: str, data: dict, **kwargs) -> httpx.Response:
         """Make a POST request with JSON body."""
         return await self._request("POST", endpoint, json=data, **kwargs)
 
@@ -352,13 +342,13 @@ class AsyncHttpClient:
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
-_sync_clients: Dict[str, HttpClient] = {}
-_async_clients: Dict[str, AsyncHttpClient] = {}
+_sync_clients: dict[str, HttpClient] = {}
+_async_clients: dict[str, AsyncHttpClient] = {}
 
 
 def get_http_client(
-    base_url: Optional[str] = None,
-    circuit_name: Optional[str] = None,
+    base_url: str | None = None,
+    circuit_name: str | None = None,
 ) -> HttpClient:
     """
     Get a shared sync HTTP client instance.
@@ -383,8 +373,8 @@ def get_http_client(
 
 
 def get_async_http_client(
-    base_url: Optional[str] = None,
-    circuit_name: Optional[str] = None,
+    base_url: str | None = None,
+    circuit_name: str | None = None,
 ) -> AsyncHttpClient:
     """
     Get a shared async HTTP client instance.
@@ -425,11 +415,7 @@ def close_all_clients():
 
 if HTTPX_AVAILABLE:
 
-    def create_httpx_client(
-        base_url: str,
-        http2: bool = True,
-        **kwargs
-    ) -> httpx.Client:
+    def create_httpx_client(base_url: str, http2: bool = True, **kwargs) -> httpx.Client:
         """
         Create a configured httpx.Client with sensible defaults.
 
@@ -457,11 +443,7 @@ if HTTPX_AVAILABLE:
             **kwargs,
         )
 
-    def create_async_httpx_client(
-        base_url: str,
-        http2: bool = True,
-        **kwargs
-    ) -> httpx.AsyncClient:
+    def create_async_httpx_client(base_url: str, http2: bool = True, **kwargs) -> httpx.AsyncClient:
         """
         Create a configured httpx.AsyncClient with sensible defaults.
 

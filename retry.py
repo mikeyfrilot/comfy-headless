@@ -22,20 +22,21 @@ Usage:
         client.request(...)
 """
 
-import time
-import random
-import functools
-import threading
 import asyncio
 import concurrent.futures
-from typing import Callable, TypeVar, Optional, Tuple, Type, Union, Any
+import functools
+import random
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
+from typing import TypeVar, Union
 
 from .config import settings
+from .exceptions import CircuitOpenError, RetryExhaustedError
 from .logging_config import get_logger
-from .exceptions import RetryExhaustedError, CircuitOpenError
 
 logger = get_logger(__name__)
 
@@ -64,14 +65,15 @@ __all__ = [
 try:
     import tenacity
     from tenacity import (
-        retry,
-        stop_after_attempt,
-        wait_exponential_jitter,
-        wait_exponential,
-        retry_if_exception_type,
-        before_sleep_log,
         after_log,
+        before_sleep_log,
+        retry,
+        retry_if_exception_type,
+        stop_after_attempt,
+        wait_exponential,
+        wait_exponential_jitter,
     )
+
     TENACITY_AVAILABLE = True
 except ImportError:
     TENACITY_AVAILABLE = False
@@ -83,20 +85,21 @@ except ImportError:
 # =============================================================================
 
 T = TypeVar("T")
-ExceptionTypes = Union[Type[Exception], Tuple[Type[Exception], ...]]
+ExceptionTypes = Union[type[Exception], tuple[type[Exception], ...]]
 
 
 # =============================================================================
 # RETRY DECORATOR (Tenacity-based when available)
 # =============================================================================
 
+
 def retry_with_backoff(
-    max_attempts: Optional[int] = None,
-    backoff_base: Optional[float] = None,
-    backoff_max: Optional[float] = None,
-    jitter: Optional[bool] = None,
+    max_attempts: int | None = None,
+    backoff_base: float | None = None,
+    backoff_max: float | None = None,
+    jitter: bool | None = None,
     exceptions: ExceptionTypes = Exception,
-    on_retry: Optional[Callable[[int, Exception], None]] = None,
+    on_retry: Callable[[int, Exception], None] | None = None,
 ) -> Callable:
     """
     Decorator for retry with exponential backoff and optional jitter.
@@ -167,6 +170,7 @@ def retry_with_backoff(
                     )
 
             return wrapper
+
         return decorator
 
     else:
@@ -174,7 +178,7 @@ def retry_with_backoff(
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
             @functools.wraps(func)
             def wrapper(*args, **kwargs) -> T:
-                last_exception: Optional[Exception] = None
+                last_exception: Exception | None = None
 
                 for attempt in range(1, _max_attempts + 1):
                     try:
@@ -185,16 +189,16 @@ def retry_with_backoff(
                         if attempt == _max_attempts:
                             logger.warning(
                                 f"Retry exhausted for {func.__name__} after {attempt} attempts",
-                                extra={"function": func.__name__, "attempts": attempt}
+                                extra={"function": func.__name__, "attempts": attempt},
                             )
                             raise RetryExhaustedError(
                                 message=f"All {_max_attempts} retry attempts exhausted for {func.__name__}",
                                 attempts=_max_attempts,
-                                last_error=last_exception
+                                last_error=last_exception,
                             )
 
                         # Calculate backoff with optional jitter
-                        backoff = min(_backoff_base ** attempt, _backoff_max)
+                        backoff = min(_backoff_base**attempt, _backoff_max)
                         if _jitter:
                             # Add up to 50% jitter
                             jitter_amount = backoff * random.uniform(0, 0.5)
@@ -208,8 +212,8 @@ def retry_with_backoff(
                                 "attempt": attempt,
                                 "backoff": backoff,
                                 "jitter": _jitter,
-                                "error": str(e)
-                            }
+                                "error": str(e),
+                            },
                         )
 
                         if on_retry:
@@ -221,10 +225,11 @@ def retry_with_backoff(
                 raise RetryExhaustedError(
                     message=f"Retry failed for {func.__name__}",
                     attempts=_max_attempts,
-                    last_error=last_exception
+                    last_error=last_exception,
                 )
 
             return wrapper
+
         return decorator
 
 
@@ -263,7 +268,7 @@ def retry_on_exception(
         except exceptions as e:
             last_exception = e
             if attempt < max_attempts:
-                backoff = min(backoff_base ** attempt, 30.0)
+                backoff = min(backoff_base**attempt, 30.0)
                 if jitter:
                     backoff += backoff * random.uniform(0, 0.5)
                 time.sleep(backoff)
@@ -271,7 +276,7 @@ def retry_on_exception(
     raise RetryExhaustedError(
         message=f"All {max_attempts} retry attempts exhausted",
         attempts=max_attempts,
-        last_error=last_exception
+        last_error=last_exception,
     )
 
 
@@ -279,11 +284,12 @@ def retry_on_exception(
 # ASYNC RETRY (for httpx/aiohttp)
 # =============================================================================
 
+
 def retry_async(
-    max_attempts: Optional[int] = None,
-    backoff_base: Optional[float] = None,
-    backoff_max: Optional[float] = None,
-    jitter: Optional[bool] = None,
+    max_attempts: int | None = None,
+    backoff_base: float | None = None,
+    backoff_max: float | None = None,
+    jitter: bool | None = None,
     exceptions: ExceptionTypes = Exception,
 ) -> Callable:
     """
@@ -305,6 +311,7 @@ def retry_async(
     _jitter = jitter if jitter is not None else settings.retry.backoff_jitter
 
     if TENACITY_AVAILABLE:
+
         def decorator(func):
             if _jitter:
                 wait_strategy = wait_exponential_jitter(
@@ -323,6 +330,7 @@ def retry_async(
                 retry=retry_if_exception_type(exceptions),
                 reraise=True,
             )(func)
+
         return decorator
     else:
         # Fallback async implementation
@@ -336,7 +344,7 @@ def retry_async(
                     except exceptions as e:
                         last_exception = e
                         if attempt < _max_attempts:
-                            backoff = min(_backoff_base ** attempt, _backoff_max)
+                            backoff = min(_backoff_base**attempt, _backoff_max)
                             if _jitter:
                                 backoff += backoff * random.uniform(0, 0.5)
                             await asyncio.sleep(backoff)
@@ -346,7 +354,9 @@ def retry_async(
                     attempts=_max_attempts,
                     last_error=last_exception,
                 )
+
             return wrapper
+
         return decorator
 
 
@@ -354,9 +364,10 @@ def retry_async(
 # CIRCUIT BREAKER
 # =============================================================================
 
+
 class CircuitState(Enum):
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Failing, rejecting requests
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, rejecting requests
     HALF_OPEN = "half_open"  # Testing if recovered
 
 
@@ -397,7 +408,7 @@ class CircuitBreaker:
     # Internal state
     _state: CircuitState = field(default=CircuitState.CLOSED, init=False)
     _failure_count: int = field(default=0, init=False)
-    _last_failure_time: Optional[datetime] = field(default=None, init=False)
+    _last_failure_time: datetime | None = field(default=None, init=False)
     _success_count_half_open: int = field(default=0, init=False)
     _lock: threading.RLock = field(default_factory=threading.RLock, init=False)
 
@@ -423,7 +434,7 @@ class CircuitBreaker:
             if elapsed >= self.reset_timeout:
                 logger.info(
                     f"Circuit {self.name}: OPEN -> HALF_OPEN after {elapsed:.1f}s",
-                    extra={"circuit": self.name, "transition": "open_to_half_open"}
+                    extra={"circuit": self.name, "transition": "open_to_half_open"},
                 )
                 self._state = CircuitState.HALF_OPEN
                 self._success_count_half_open = 0
@@ -449,7 +460,7 @@ class CircuitBreaker:
                 if self._success_count_half_open >= self.success_threshold:
                     logger.info(
                         f"Circuit {self.name}: HALF_OPEN -> CLOSED after {self._success_count_half_open} successes",
-                        extra={"circuit": self.name, "transition": "half_open_to_closed"}
+                        extra={"circuit": self.name, "transition": "half_open_to_closed"},
                     )
                     self._state = CircuitState.CLOSED
                     self._failure_count = 0
@@ -469,7 +480,7 @@ class CircuitBreaker:
                 # Any failure in half-open goes back to open
                 logger.warning(
                     f"Circuit {self.name}: HALF_OPEN -> OPEN after failure",
-                    extra={"circuit": self.name, "transition": "half_open_to_open"}
+                    extra={"circuit": self.name, "transition": "half_open_to_open"},
                 )
                 self._state = CircuitState.OPEN
 
@@ -480,8 +491,8 @@ class CircuitBreaker:
                         extra={
                             "circuit": self.name,
                             "transition": "closed_to_open",
-                            "failures": self._failure_count
-                        }
+                            "failures": self._failure_count,
+                        },
                     )
                     self._state = CircuitState.OPEN
 
@@ -493,16 +504,14 @@ class CircuitBreaker:
             self._last_failure_time = None
             self._success_count_half_open = 0
             logger.info(
-                f"Circuit {self.name}: manually reset to CLOSED",
-                extra={"circuit": self.name}
+                f"Circuit {self.name}: manually reset to CLOSED", extra={"circuit": self.name}
             )
 
     def __enter__(self):
         """Context manager entry - check if request allowed."""
         if not self.allow_request():
             raise CircuitOpenError(
-                service=self.name,
-                message=f"Circuit breaker {self.name} is open"
+                service=self.name, message=f"Circuit breaker {self.name} is open"
             )
         return self
 
@@ -526,6 +535,7 @@ class CircuitBreaker:
 # =============================================================================
 # CIRCUIT BREAKER REGISTRY
 # =============================================================================
+
 
 class CircuitBreakerRegistry:
     """
@@ -582,6 +592,7 @@ def get_circuit_breaker(name: str) -> CircuitBreaker:
 # RATE LIMITER
 # =============================================================================
 
+
 @dataclass
 class RateLimiter:
     """
@@ -615,13 +626,10 @@ class RateLimiter:
         """Refill tokens based on time elapsed."""
         now = time.monotonic()
         elapsed = now - self._last_update
-        self._tokens = min(
-            self.rate,
-            self._tokens + (elapsed * self.rate / self.per_seconds)
-        )
+        self._tokens = min(self.rate, self._tokens + (elapsed * self.rate / self.per_seconds))
         self._last_update = now
 
-    def acquire(self, blocking: bool = False, timeout: Optional[float] = None) -> bool:
+    def acquire(self, blocking: bool = False, timeout: float | None = None) -> bool:
         """
         Acquire a token.
 
@@ -644,9 +652,8 @@ class RateLimiter:
             if not blocking:
                 return False
 
-            if timeout is not None:
-                if time.monotonic() - start >= timeout:
-                    return False
+            if timeout is not None and time.monotonic() - start >= timeout:
+                return False
 
             # Wait a bit before retrying
             time.sleep(self.per_seconds / self.rate)
@@ -656,12 +663,14 @@ class RateLimiter:
 # TIMEOUT UTILITIES
 # =============================================================================
 
+
 class OperationTimeoutError(Exception):
     """
     Operation timed out.
 
     Named to avoid shadowing the builtin TimeoutError.
     """
+
     pass
 
 
@@ -680,6 +689,7 @@ def with_timeout(timeout: float):
         def slow_operation():
             ...
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> T:
@@ -693,6 +703,7 @@ def with_timeout(timeout: float):
                     )
 
         return wrapper
+
     return decorator
 
 
@@ -705,17 +716,15 @@ def async_timeout(timeout: float):
         async def slow_operation():
             ...
     """
+
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             try:
-                return await asyncio.wait_for(
-                    func(*args, **kwargs),
-                    timeout=timeout
-                )
+                return await asyncio.wait_for(func(*args, **kwargs), timeout=timeout)
             except asyncio.TimeoutError:
-                raise OperationTimeoutError(
-                    f"Operation {func.__name__} timed out after {timeout}s"
-                )
+                raise OperationTimeoutError(f"Operation {func.__name__} timed out after {timeout}s")
+
         return wrapper
+
     return decorator

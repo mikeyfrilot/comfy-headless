@@ -10,14 +10,12 @@ Targets uncovered lines:
 - Lines 1080-1107: _generate_negative
 """
 
-import pytest
 import time
-from unittest.mock import patch, MagicMock
-
 
 # ============================================================================
 # PROMPT INTELLIGENCE BASIC TESTS
 # ============================================================================
+
 
 class TestPromptIntelligenceInit:
     """Test PromptIntelligence initialization."""
@@ -48,6 +46,7 @@ class TestPromptIntelligenceInit:
 # ============================================================================
 # ANALYZE KEYWORDS TESTS
 # ============================================================================
+
 
 class TestAnalyzeKeywords:
     """Test keyword-based prompt analysis."""
@@ -131,6 +130,7 @@ class TestAnalyzeKeywords:
 # STYLE DETECTION TESTS
 # ============================================================================
 
+
 class TestStyleDetection:
     """Test style detection in prompts."""
 
@@ -184,6 +184,7 @@ class TestStyleDetection:
 # MOOD DETECTION TESTS
 # ============================================================================
 
+
 class TestMoodDetection:
     """Test mood detection in prompts."""
 
@@ -218,6 +219,7 @@ class TestMoodDetection:
 # ============================================================================
 # ENHANCE PROMPT TESTS
 # ============================================================================
+
 
 class TestEnhancePrompt:
     """Test prompt enhancement."""
@@ -272,7 +274,7 @@ class TestEnhancePrompt:
 
     def test_enhance_with_analysis(self):
         """Enhancement with pre-computed analysis."""
-        from comfy_headless.intelligence import PromptIntelligence, PromptAnalysis
+        from comfy_headless.intelligence import PromptAnalysis, PromptIntelligence
 
         pi = PromptIntelligence()
 
@@ -281,7 +283,7 @@ class TestEnhancePrompt:
             intent="portrait",
             styles=["photorealistic"],
             mood="dramatic",
-            suggested_preset="quality"
+            suggested_preset="quality",
         )
 
         result = pi.enhance("test prompt", analysis=analysis)
@@ -308,7 +310,7 @@ class TestEnhancePrompt:
         pi = PromptIntelligence(use_cache=True)
 
         # First call
-        result1 = pi.enhance("skip cache test", style="balanced")
+        pi.enhance("skip cache test", style="balanced")
 
         # Second call with skip_cache
         result2 = pi.enhance("skip cache test", style="balanced", skip_cache=True)
@@ -331,6 +333,7 @@ class TestEnhancePrompt:
 # NEGATIVE PROMPT GENERATION TESTS
 # ============================================================================
 
+
 class TestNegativeGeneration:
     """Test negative prompt generation."""
 
@@ -341,7 +344,9 @@ class TestNegativeGeneration:
         pi = PromptIntelligence()
         result = pi.enhance("portrait of a woman")
 
-        assert any(term in result.negative.lower() for term in ["bad", "distorted", "blurry", "quality"])
+        assert any(
+            term in result.negative.lower() for term in ["bad", "distorted", "blurry", "quality"]
+        )
 
     def test_negative_for_landscape(self):
         """Negative prompt for landscape intent."""
@@ -366,6 +371,7 @@ class TestNegativeGeneration:
 # ============================================================================
 # STYLE-SPECIFIC ENHANCEMENTS
 # ============================================================================
+
 
 class TestStyleSpecificEnhancements:
     """Test style-specific prompt enhancements."""
@@ -393,12 +399,13 @@ class TestStyleSpecificEnhancements:
 # CACHE TESTS
 # ============================================================================
 
+
 class TestPromptCacheExtended:
     """Extended cache tests."""
 
     def test_cache_enhancement_set_get(self):
         """Cache set/get for enhancements."""
-        from comfy_headless.intelligence import PromptCache, EnhancedPrompt
+        from comfy_headless.intelligence import EnhancedPrompt, PromptCache
 
         cache = PromptCache(max_size=10)
 
@@ -406,7 +413,7 @@ class TestPromptCacheExtended:
             original="test",
             enhanced="enhanced test",
             negative="bad quality",
-            additions=["enhanced"]
+            additions=["enhanced"],
         )
 
         cache.set_enhancement("test", "balanced", enhanced)
@@ -426,16 +433,12 @@ class TestPromptCacheExtended:
 
     def test_cache_clear(self):
         """Cache can be cleared."""
-        from comfy_headless.intelligence import PromptCache, PromptAnalysis
+        from comfy_headless.intelligence import PromptAnalysis, PromptCache
 
         cache = PromptCache(max_size=10)
 
         analysis = PromptAnalysis(
-            original="test",
-            intent="general",
-            styles=[],
-            mood="neutral",
-            suggested_preset="quality"
+            original="test", intent="general", styles=[], mood="neutral", suggested_preset="quality"
         )
 
         cache.set_analysis("test", analysis)
@@ -446,17 +449,13 @@ class TestPromptCacheExtended:
 
     def test_cache_ttl_expiration(self):
         """Cache entries expire after TTL."""
-        from comfy_headless.intelligence import PromptCache, PromptAnalysis
+        from comfy_headless.intelligence import PromptAnalysis, PromptCache
 
         # Create cache with very short TTL
         cache = PromptCache(max_size=10, ttl_seconds=0.01)
 
         analysis = PromptAnalysis(
-            original="test",
-            intent="general",
-            styles=[],
-            mood="neutral",
-            suggested_preset="quality"
+            original="test", intent="general", styles=[], mood="neutral", suggested_preset="quality"
         )
 
         cache.set_analysis("test_ttl", analysis)
@@ -470,15 +469,12 @@ class TestPromptCacheExtended:
 
     def test_cache_enhancement_ttl_expiration(self):
         """Enhancement cache entries expire after TTL."""
-        from comfy_headless.intelligence import PromptCache, EnhancedPrompt
+        from comfy_headless.intelligence import EnhancedPrompt, PromptCache
 
         cache = PromptCache(max_size=10, ttl_seconds=0.01)
 
         enhanced = EnhancedPrompt(
-            original="test",
-            enhanced="enhanced test",
-            negative="bad",
-            additions=[]
+            original="test", enhanced="enhanced test", negative="bad", additions=[]
         )
 
         cache.set_enhancement("test_ttl", "balanced", enhanced)
@@ -494,6 +490,7 @@ class TestPromptCacheExtended:
 # ============================================================================
 # CONVENIENCE FUNCTION TESTS
 # ============================================================================
+
 
 class TestConvenienceFunctions:
     """Test module-level convenience functions."""
@@ -537,6 +534,7 @@ class TestConvenienceFunctions:
 # ============================================================================
 # A/B TESTING TESTS
 # ============================================================================
+
 
 class TestPromptABTester:
     """Test PromptABTester."""
@@ -592,6 +590,7 @@ class TestPromptABTester:
 # PROMPT VERSION TESTS
 # ============================================================================
 
+
 class TestPromptVersion:
     """Test PromptVersion dataclass."""
 
@@ -599,12 +598,7 @@ class TestPromptVersion:
         """PromptVersion can be created."""
         from comfy_headless.intelligence import PromptVersion
 
-        version = PromptVersion(
-            id="v1",
-            prompt="test",
-            version="1.0",
-            variant="A"
-        )
+        version = PromptVersion(id="v1", prompt="test", version="1.0", variant="A")
 
         assert version.id == "v1"
         assert version.prompt == "test"
@@ -613,12 +607,7 @@ class TestPromptVersion:
         """PromptVersion to_dict works."""
         from comfy_headless.intelligence import PromptVersion
 
-        version = PromptVersion(
-            id="v1",
-            prompt="test",
-            version="1.0",
-            variant="A"
-        )
+        version = PromptVersion(id="v1", prompt="test", version="1.0", variant="A")
 
         d = version.to_dict()
         assert d["id"] == "v1"
@@ -628,6 +617,7 @@ class TestPromptVersion:
 # ============================================================================
 # CHAIN OF THOUGHT TESTS
 # ============================================================================
+
 
 class TestChainOfThought:
     """Test chain-of-thought template."""
@@ -643,6 +633,7 @@ class TestChainOfThought:
 # ============================================================================
 # FEW-SHOT TESTS
 # ============================================================================
+
 
 class TestFewShot:
     """Test few-shot example system."""
@@ -666,6 +657,7 @@ class TestFewShot:
 # ============================================================================
 # EDGE CASES
 # ============================================================================
+
 
 class TestEdgeCases:
     """Test edge cases."""
@@ -707,7 +699,7 @@ class TestEdgeCases:
         pi = PromptIntelligence()
         result = pi.enhance(
             "photorealistic highly detailed photo, highly detailed, highly detailed",
-            style="detailed"
+            style="detailed",
         )
 
         assert result.enhanced is not None
@@ -726,6 +718,7 @@ class TestEdgeCases:
 # ============================================================================
 # SANITIZE PROMPT EXTENDED TESTS
 # ============================================================================
+
 
 class TestSanitizePromptExtended:
     """Extended sanitize prompt tests."""

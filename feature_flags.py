@@ -31,7 +31,8 @@ Installation commands for each feature:
 
 import functools
 import logging
-from typing import Dict, Callable, TypeVar, Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 # Use standard logging to avoid circular import with logging_config
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ __all__ = [
 ]
 
 # Feature detection results
-FEATURES: Dict[str, bool] = {
+FEATURES: dict[str, bool] = {
     "ai": False,
     "websocket": False,
     "health": False,
@@ -56,7 +57,7 @@ FEATURES: Dict[str, bool] = {
 }
 
 # Installation hints for each feature
-INSTALL_HINTS: Dict[str, str] = {
+INSTALL_HINTS: dict[str, str] = {
     "ai": "pip install comfy-headless[ai]",
     "websocket": "pip install comfy-headless[websocket]",
     "health": "pip install comfy-headless[health]",
@@ -66,7 +67,7 @@ INSTALL_HINTS: Dict[str, str] = {
 }
 
 # Feature descriptions
-FEATURE_DESCRIPTIONS: Dict[str, str] = {
+FEATURE_DESCRIPTIONS: dict[str, str] = {
     "ai": "AI-powered prompt intelligence via Ollama (httpx)",
     "websocket": "Real-time progress updates via WebSocket",
     "health": "System health monitoring (psutil)",
@@ -80,6 +81,7 @@ FEATURE_DESCRIPTIONS: Dict[str, str] = {
 # FEATURE DETECTION
 # =============================================================================
 
+
 def _detect_features() -> None:
     """Detect which optional features are available."""
     global FEATURES
@@ -87,6 +89,7 @@ def _detect_features() -> None:
     # AI feature (httpx for Ollama)
     try:
         import httpx  # noqa: F401
+
         FEATURES["ai"] = True
         logger.debug("Feature 'ai' available: httpx installed")
     except ImportError:
@@ -95,6 +98,7 @@ def _detect_features() -> None:
     # WebSocket feature
     try:
         import websockets  # noqa: F401
+
         FEATURES["websocket"] = True
         logger.debug("Feature 'websocket' available: websockets installed")
     except ImportError:
@@ -103,6 +107,7 @@ def _detect_features() -> None:
     # Health monitoring feature
     try:
         import psutil  # noqa: F401
+
         FEATURES["health"] = True
         logger.debug("Feature 'health' available: psutil installed")
     except ImportError:
@@ -111,6 +116,7 @@ def _detect_features() -> None:
     # UI feature (Gradio)
     try:
         import gradio  # noqa: F401
+
         FEATURES["ui"] = True
         logger.debug("Feature 'ui' available: gradio installed")
     except ImportError:
@@ -120,6 +126,7 @@ def _detect_features() -> None:
     try:
         import pydantic  # noqa: F401
         import pydantic_settings  # noqa: F401
+
         FEATURES["validation"] = True
         logger.debug("Feature 'validation' available: pydantic installed")
     except ImportError:
@@ -128,6 +135,7 @@ def _detect_features() -> None:
     # Observability feature (OpenTelemetry)
     try:
         import opentelemetry  # noqa: F401
+
         FEATURES["observability"] = True
         logger.debug("Feature 'observability' available: opentelemetry installed")
     except ImportError:
@@ -146,6 +154,7 @@ _detect_features()
 # =============================================================================
 # PUBLIC API
 # =============================================================================
+
 
 def check_feature(feature: str) -> bool:
     """
@@ -173,7 +182,7 @@ def get_install_hint(feature: str) -> str:
     return INSTALL_HINTS.get(feature, f"pip install comfy-headless[{feature}]")
 
 
-def list_available_features() -> Dict[str, str]:
+def list_available_features() -> dict[str, str]:
     """
     List all installed features with descriptions.
 
@@ -187,7 +196,7 @@ def list_available_features() -> Dict[str, str]:
     }
 
 
-def list_missing_features() -> Dict[str, str]:
+def list_missing_features() -> dict[str, str]:
     """
     List all missing features with install hints.
 
@@ -195,9 +204,7 @@ def list_missing_features() -> Dict[str, str]:
         Dict of feature name -> install hint for missing features
     """
     return {
-        name: INSTALL_HINTS.get(name, "")
-        for name, available in FEATURES.items()
-        if not available
+        name: INSTALL_HINTS.get(name, "") for name, available in FEATURES.items() if not available
     }
 
 
@@ -220,17 +227,19 @@ def require_feature(feature: str) -> Callable[[F], F]:
             # Uses httpx internally
             ...
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             if not FEATURES.get(feature, False):
                 hint = INSTALL_HINTS.get(feature, f"pip install comfy-headless[{feature}]")
                 raise ImportError(
-                    f"Feature '{feature}' is required but not installed. "
-                    f"Install with: {hint}"
+                    f"Feature '{feature}' is required but not installed. Install with: {hint}"
                 )
             return func(*args, **kwargs)
+
         return wrapper  # type: ignore
+
     return decorator
 
 
@@ -241,10 +250,7 @@ class FeatureNotAvailable(ImportError):
         self.feature = feature
         self.install_hint = get_install_hint(feature)
         if not message:
-            message = (
-                f"Feature '{feature}' is not available. "
-                f"Install with: {self.install_hint}"
-            )
+            message = f"Feature '{feature}' is not available. Install with: {self.install_hint}"
         super().__init__(message)
 
 

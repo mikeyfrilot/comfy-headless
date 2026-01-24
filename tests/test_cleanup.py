@@ -1,7 +1,5 @@
 """Tests for cleanup module."""
 
-import pytest
-import tempfile
 import os
 from pathlib import Path
 
@@ -43,7 +41,7 @@ class TestGetTempManager:
 
     def test_get_temp_manager_returns_manager(self):
         """Test get_temp_manager returns TempFileManager."""
-        from comfy_headless.cleanup import get_temp_manager, TempFileManager
+        from comfy_headless.cleanup import TempFileManager, get_temp_manager
 
         manager = get_temp_manager()
         assert isinstance(manager, TempFileManager)
@@ -95,12 +93,12 @@ class TestSaveTempFunctions:
         from comfy_headless.cleanup import save_temp_image
 
         # Create simple PNG bytes (1x1 pixel)
-        png_data = b'\x89PNG\r\n\x1a\n' + b'\x00' * 100
+        png_data = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
 
         path = save_temp_image(png_data)
         assert path is not None
         assert Path(path).exists()
-        assert path.endswith('.png')
+        assert path.endswith(".png")
 
         # Cleanup
         if Path(path).exists():
@@ -110,12 +108,12 @@ class TestSaveTempFunctions:
         """Test save_temp_video."""
         from comfy_headless.cleanup import save_temp_video
 
-        video_data = b'\x00' * 100
+        video_data = b"\x00" * 100
 
         path = save_temp_video(video_data, format="mp4")
         assert path is not None
         assert Path(path).exists()
-        assert path.endswith('.mp4')
+        assert path.endswith(".mp4")
 
         # Cleanup
         if Path(path).exists():

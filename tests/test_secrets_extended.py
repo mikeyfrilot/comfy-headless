@@ -10,9 +10,10 @@ Covers:
 - Dict redaction
 """
 
-import pytest
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+import pytest
 
 
 class TestSecretValueBasics:
@@ -146,7 +147,7 @@ class TestSecretValueComparison:
         secret = SecretValue("123")
 
         assert secret != 123
-        assert secret != None
+        assert secret is not None
         assert secret != ["123"]
 
     def test_hash_consistent(self):
@@ -189,9 +190,7 @@ class TestSecretsManagerConfig:
         from comfy_headless.secrets import SecretsManagerConfig
 
         config = SecretsManagerConfig(
-            env_prefix="CUSTOM_",
-            vault_enabled=True,
-            vault_url="http://vault:8200"
+            env_prefix="CUSTOM_", vault_enabled=True, vault_url="http://vault:8200"
         )
 
         assert config.env_prefix == "CUSTOM_"
@@ -291,6 +290,7 @@ class TestGetSecretStr:
 
         # Reset manager cache so it doesn't return cached values
         from comfy_headless.secrets import get_secrets_manager
+
         get_secrets_manager().clear_cache()
 
         result = get_secret_str("MISSING_STR", default="default")
@@ -378,7 +378,7 @@ class TestHashSecret:
 
     def test_hash_secret_accepts_secret_value(self):
         """hash_secret accepts SecretValue input."""
-        from comfy_headless.secrets import hash_secret, SecretValue
+        from comfy_headless.secrets import SecretValue, hash_secret
 
         secret = SecretValue("my-secret")
         hashed = hash_secret(secret)
@@ -462,12 +462,7 @@ class TestRedactDict:
         """redact_dict preserves dict structure."""
         from comfy_headless.secrets import redact_dict
 
-        data = {
-            "config": {
-                "host": "localhost",
-                "token": "secret-token"
-            }
-        }
+        data = {"config": {"host": "localhost", "token": "secret-token"}}
 
         redacted = redact_dict(data)
 
@@ -478,10 +473,7 @@ class TestRedactDict:
         """redact_dict accepts custom sensitive keys."""
         from comfy_headless.secrets import redact_dict
 
-        data = {
-            "custom_secret": "value",
-            "normal": "normal-value"
-        }
+        data = {"custom_secret": "value", "normal": "normal-value"}
 
         redacted = redact_dict(data, sensitive_keys=["custom_secret"])
 
@@ -494,7 +486,7 @@ class TestGetSecretsManager:
 
     def test_get_secrets_manager_returns_manager(self):
         """get_secrets_manager returns SecretsManager."""
-        from comfy_headless.secrets import get_secrets_manager, SecretsManager
+        from comfy_headless.secrets import SecretsManager, get_secrets_manager
 
         manager = get_secrets_manager()
         assert isinstance(manager, SecretsManager)

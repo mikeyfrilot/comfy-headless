@@ -13,14 +13,14 @@ Targets specific uncovered lines from coverage report:
 - Lines 1391-1408: Video fallback to legacy
 """
 
-import pytest
-import time
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ============================================================================
 # LAZY VIDEO BUILDER TESTS (lines 48-51)
 # ============================================================================
+
 
 class TestLazyVideoBuilder:
     """Test _get_video_builder lazy import."""
@@ -34,7 +34,7 @@ class TestLazyVideoBuilder:
         client_module._video_builder = None
 
         try:
-            with patch('comfy_headless.video.get_video_builder') as mock_get:
+            with patch("comfy_headless.video.get_video_builder") as mock_get:
                 mock_builder = MagicMock()
                 mock_get.return_value = mock_builder
 
@@ -70,6 +70,7 @@ class TestLazyVideoBuilder:
 # RATE LIMITER TIMEOUT TESTS (lines 172-174)
 # ============================================================================
 
+
 class TestRateLimiterTimeout:
     """Test rate limiter timeout handling in _request."""
 
@@ -81,7 +82,7 @@ class TestRateLimiterTimeout:
         client = ComfyClient(rate_limit=1, rate_limit_per_seconds=10.0)
 
         # Mock rate limiter to return False (timeout)
-        with patch.object(client._rate_limiter, 'acquire', return_value=False):
+        with patch.object(client._rate_limiter, "acquire", return_value=False):
             with pytest.raises(ComfyUIConnectionError) as exc_info:
                 client._request("GET", "/test")
 
@@ -93,8 +94,8 @@ class TestRateLimiterTimeout:
 
         client = ComfyClient(rate_limit=10, rate_limit_per_seconds=1.0)
 
-        with patch.object(client._rate_limiter, 'acquire', return_value=True):
-            with patch.object(client.session, 'request') as mock_request:
+        with patch.object(client._rate_limiter, "acquire", return_value=True):
+            with patch.object(client.session, "request") as mock_request:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 mock_request.return_value = mock_response
@@ -107,6 +108,7 @@ class TestRateLimiterTimeout:
 # VRAM DETECTION EDGE CASES (lines 275-276, 297-298)
 # ============================================================================
 
+
 class TestVRAMDetectionEdgeCases:
     """Test VRAM detection edge cases."""
 
@@ -116,7 +118,7 @@ class TestVRAMDetectionEdgeCases:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_system_stats') as mock_stats:
+        with patch.object(client, "get_system_stats") as mock_stats:
             mock_stats.return_value = {"devices": []}
 
             vram = client.get_vram_gb()
@@ -128,7 +130,7 @@ class TestVRAMDetectionEdgeCases:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_system_stats') as mock_stats:
+        with patch.object(client, "get_system_stats") as mock_stats:
             mock_stats.return_value = {"devices": [{"vram_total": 0}]}
 
             vram = client.get_vram_gb()
@@ -140,7 +142,7 @@ class TestVRAMDetectionEdgeCases:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_system_stats') as mock_stats:
+        with patch.object(client, "get_system_stats") as mock_stats:
             mock_stats.side_effect = Exception("Detection failed")
 
             vram = client.get_vram_gb()
@@ -152,7 +154,7 @@ class TestVRAMDetectionEdgeCases:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_system_stats') as mock_stats:
+        with patch.object(client, "get_system_stats") as mock_stats:
             mock_stats.return_value = {"devices": []}
 
             vram = client.get_free_vram_gb()
@@ -164,7 +166,7 @@ class TestVRAMDetectionEdgeCases:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_system_stats') as mock_stats:
+        with patch.object(client, "get_system_stats") as mock_stats:
             mock_stats.return_value = {"devices": [{"vram_free": 0}]}
 
             vram = client.get_free_vram_gb()
@@ -176,7 +178,7 @@ class TestVRAMDetectionEdgeCases:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_system_stats') as mock_stats:
+        with patch.object(client, "get_system_stats") as mock_stats:
             mock_stats.side_effect = Exception("Detection failed")
 
             vram = client.get_free_vram_gb()
@@ -187,6 +189,7 @@ class TestVRAMDetectionEdgeCases:
 # PRESET FALLBACK TESTS (lines 481-486, 504-516)
 # ============================================================================
 
+
 class TestPresetFallbacks:
     """Test preset recommendation fallbacks."""
 
@@ -196,7 +199,7 @@ class TestPresetFallbacks:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_vram_gb', return_value=16.0):
+        with patch.object(client, "get_vram_gb", return_value=16.0):
             preset = client.recommend_image_preset("cinematic")
             assert preset == "cinematic"
 
@@ -206,7 +209,7 @@ class TestPresetFallbacks:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_vram_gb', return_value=14.0):
+        with patch.object(client, "get_vram_gb", return_value=14.0):
             preset = client.recommend_image_preset("film")
             assert preset == "cinematic"
 
@@ -216,7 +219,7 @@ class TestPresetFallbacks:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_vram_gb', return_value=10.0):
+        with patch.object(client, "get_vram_gb", return_value=10.0):
             preset = client.recommend_image_preset("landscape")
             assert preset == "landscape"
 
@@ -226,8 +229,8 @@ class TestPresetFallbacks:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_vram_gb', return_value=6.0):
-            with patch('comfy_headless.video.get_recommended_preset', side_effect=ImportError):
+        with patch.object(client, "get_vram_gb", return_value=6.0):
+            with patch("comfy_headless.video.get_recommended_preset", side_effect=ImportError):
                 preset = client.recommend_video_preset()
                 assert preset == "quick"
 
@@ -237,8 +240,8 @@ class TestPresetFallbacks:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_vram_gb', return_value=10.0):
-            with patch('comfy_headless.video.get_recommended_preset', side_effect=ImportError):
+        with patch.object(client, "get_vram_gb", return_value=10.0):
+            with patch("comfy_headless.video.get_recommended_preset", side_effect=ImportError):
                 preset = client.recommend_video_preset()
                 assert preset == "wan_1.3b"
 
@@ -248,8 +251,8 @@ class TestPresetFallbacks:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_vram_gb', return_value=14.0):
-            with patch('comfy_headless.video.get_recommended_preset', side_effect=ImportError):
+        with patch.object(client, "get_vram_gb", return_value=14.0):
+            with patch("comfy_headless.video.get_recommended_preset", side_effect=ImportError):
                 preset = client.recommend_video_preset()
                 assert preset == "ltx_standard"
 
@@ -259,8 +262,8 @@ class TestPresetFallbacks:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_vram_gb', return_value=20.0):
-            with patch('comfy_headless.video.get_recommended_preset', side_effect=ImportError):
+        with patch.object(client, "get_vram_gb", return_value=20.0):
+            with patch("comfy_headless.video.get_recommended_preset", side_effect=ImportError):
                 preset = client.recommend_video_preset()
                 assert preset == "hunyuan15_720p"
 
@@ -270,8 +273,8 @@ class TestPresetFallbacks:
 
         client = ComfyClient()
 
-        with patch.object(client, 'get_vram_gb', return_value=32.0):
-            with patch('comfy_headless.video.get_recommended_preset', side_effect=ImportError):
+        with patch.object(client, "get_vram_gb", return_value=32.0):
+            with patch("comfy_headless.video.get_recommended_preset", side_effect=ImportError):
                 preset = client.recommend_video_preset()
                 assert preset == "hunyuan15_quality"
 
@@ -279,6 +282,7 @@ class TestPresetFallbacks:
 # ============================================================================
 # QUEUE ERROR HANDLING TESTS (lines 644-648)
 # ============================================================================
+
 
 class TestQueueErrorHandling:
     """Test queue_prompt error handling."""
@@ -289,7 +293,7 @@ class TestQueueErrorHandling:
 
         client = ComfyClient()
 
-        with patch.object(client, '_post') as mock_post:
+        with patch.object(client, "_post") as mock_post:
             mock_post.side_effect = ValueError("JSON error")
 
             result = client.queue_prompt({"test": "workflow"})
@@ -302,10 +306,9 @@ class TestQueueErrorHandling:
 
         client = ComfyClient()
 
-        with patch.object(client, '_post') as mock_post:
+        with patch.object(client, "_post") as mock_post:
             mock_post.side_effect = ComfyUIConnectionError(
-                message="Connection failed",
-                url="http://localhost:8188"
+                message="Connection failed", url="http://localhost:8188"
             )
 
             with pytest.raises(ComfyUIConnectionError):
@@ -315,6 +318,7 @@ class TestQueueErrorHandling:
 # ============================================================================
 # PROGRESS CALLBACK TESTS (lines 696, 704-730)
 # ============================================================================
+
 
 class TestProgressCallback:
     """Test progress callback in wait_for_completion."""
@@ -329,18 +333,12 @@ class TestProgressCallback:
         def on_progress(progress, status):
             progress_calls.append((progress, status))
 
-        with patch.object(client, 'get_history') as mock_history:
+        with patch.object(client, "get_history") as mock_history:
             mock_history.return_value = {
-                "test-123": {
-                    "status": {"status_str": "error", "completed": False}
-                }
+                "test-123": {"status": {"status_str": "error", "completed": False}}
             }
 
-            result = client.wait_for_completion(
-                "test-123",
-                timeout=1.0,
-                on_progress=on_progress
-            )
+            client.wait_for_completion("test-123", timeout=1.0, on_progress=on_progress)
 
         # Should have called on_progress with "Error" status
         assert any("Error" in call[1] for call in progress_calls)
@@ -365,26 +363,16 @@ class TestProgressCallback:
                         "status": {
                             "status_str": "processing",
                             "completed": False,
-                            "messages": [
-                                ["execution_cached", {}],
-                                ["executing", "node_5"]
-                            ]
+                            "messages": [["execution_cached", {}], ["executing", "node_5"]],
                         }
                     }
                 }
             else:
-                return {
-                    "test-123": {
-                        "status": {"completed": True}
-                    }
-                }
+                return {"test-123": {"status": {"completed": True}}}
 
-        with patch.object(client, 'get_history', side_effect=mock_history_fn):
-            result = client.wait_for_completion(
-                "test-123",
-                timeout=2.0,
-                poll_interval=0.05,
-                on_progress=on_progress
+        with patch.object(client, "get_history", side_effect=mock_history_fn):
+            client.wait_for_completion(
+                "test-123", timeout=2.0, poll_interval=0.05, on_progress=on_progress
             )
 
         # Should have progress calls with status messages
@@ -405,27 +393,13 @@ class TestProgressCallback:
         def mock_history_fn(prompt_id):
             call_count[0] += 1
             if call_count[0] <= 2:
-                return {
-                    "test-123": {
-                        "status": {
-                            "status_str": "queued",
-                            "completed": False
-                        }
-                    }
-                }
+                return {"test-123": {"status": {"status_str": "queued", "completed": False}}}
             else:
-                return {
-                    "test-123": {
-                        "status": {"completed": True}
-                    }
-                }
+                return {"test-123": {"status": {"completed": True}}}
 
-        with patch.object(client, 'get_history', side_effect=mock_history_fn):
-            result = client.wait_for_completion(
-                "test-123",
-                timeout=2.0,
-                poll_interval=0.05,
-                on_progress=on_progress
+        with patch.object(client, "get_history", side_effect=mock_history_fn):
+            client.wait_for_completion(
+                "test-123", timeout=2.0, poll_interval=0.05, on_progress=on_progress
             )
 
         # Should have progress calls with "Queued" status
@@ -453,21 +427,20 @@ class TestProgressCallback:
         def mock_queue_fn():
             return {
                 "queue_pending": [["id1", "test-123"]],  # Position 1
-                "queue_running": []
+                "queue_running": [],
             }
 
-        with patch.object(client, 'get_history', side_effect=mock_history_fn):
-            with patch.object(client, 'get_queue', side_effect=mock_queue_fn):
-                result = client.wait_for_completion(
-                    "test-123",
-                    timeout=2.0,
-                    poll_interval=0.05,
-                    on_progress=on_progress
+        with patch.object(client, "get_history", side_effect=mock_history_fn):
+            with patch.object(client, "get_queue", side_effect=mock_queue_fn):
+                client.wait_for_completion(
+                    "test-123", timeout=2.0, poll_interval=0.05, on_progress=on_progress
                 )
 
         # Should have progress calls with queue position
-        assert any("Queue position" in str(call[1]) or "position" in str(call[1]).lower()
-                   for call in progress_calls)
+        assert any(
+            "Queue position" in str(call[1]) or "position" in str(call[1]).lower()
+            for call in progress_calls
+        )
 
     def test_progress_callback_running_status(self):
         """Progress callback shows running status."""
@@ -491,16 +464,13 @@ class TestProgressCallback:
         def mock_queue_fn():
             return {
                 "queue_pending": [],
-                "queue_running": [["id1", "test-123"]]  # Running
+                "queue_running": [["id1", "test-123"]],  # Running
             }
 
-        with patch.object(client, 'get_history', side_effect=mock_history_fn):
-            with patch.object(client, 'get_queue', side_effect=mock_queue_fn):
-                result = client.wait_for_completion(
-                    "test-123",
-                    timeout=2.0,
-                    poll_interval=0.05,
-                    on_progress=on_progress
+        with patch.object(client, "get_history", side_effect=mock_history_fn):
+            with patch.object(client, "get_queue", side_effect=mock_queue_fn):
+                client.wait_for_completion(
+                    "test-123", timeout=2.0, poll_interval=0.05, on_progress=on_progress
                 )
 
         # Should have progress with "Starting" status
@@ -511,6 +481,7 @@ class TestProgressCallback:
 # WORKFLOW COMPILER TESTS (lines 1064-1090)
 # ============================================================================
 
+
 class TestWorkflowCompiler:
     """Test WorkflowCompiler integration in generate_image."""
 
@@ -520,21 +491,15 @@ class TestWorkflowCompiler:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch('comfy_headless.workflows.compile_workflow') as mock_compile:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch("comfy_headless.workflows.compile_workflow") as mock_compile:
                     mock_result = MagicMock()
                     mock_result.is_valid = True
-                    mock_result.workflow = {
-                        "3": {"inputs": {"seed": 42}}
-                    }
+                    mock_result.workflow = {"3": {"inputs": {"seed": 42}}}
                     mock_compile.return_value = mock_result
 
-                    result = client.generate_image(
-                        prompt="a sunset",
-                        preset="quality",
-                        wait=False
-                    )
+                    result = client.generate_image(prompt="a sunset", preset="quality", wait=False)
 
                     assert result["success"] is True
                     assert result["seed"] == 42
@@ -545,19 +510,15 @@ class TestWorkflowCompiler:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch('comfy_headless.workflows.compile_workflow') as mock_compile:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch("comfy_headless.workflows.compile_workflow") as mock_compile:
                     mock_result = MagicMock()
                     mock_result.is_valid = False
                     mock_result.errors = ["Invalid preset"]
                     mock_compile.return_value = mock_result
 
-                    result = client.generate_image(
-                        prompt="a sunset",
-                        preset="quality",
-                        wait=False
-                    )
+                    result = client.generate_image(prompt="a sunset", preset="quality", wait=False)
 
                     # Should still succeed using legacy builder
                     assert result["success"] is True
@@ -568,12 +529,10 @@ class TestWorkflowCompiler:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
                 result = client.generate_image(
-                    prompt="a sunset",
-                    preset="nonexistent_preset",
-                    wait=False
+                    prompt="a sunset", preset="nonexistent_preset", wait=False
                 )
 
                 # Should use legacy builder
@@ -585,16 +544,12 @@ class TestWorkflowCompiler:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch('comfy_headless.workflows.compile_workflow') as mock_compile:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch("comfy_headless.workflows.compile_workflow") as mock_compile:
                     mock_compile.side_effect = Exception("Compiler error")
 
-                    result = client.generate_image(
-                        prompt="a sunset",
-                        preset="quality",
-                        wait=False
-                    )
+                    result = client.generate_image(prompt="a sunset", preset="quality", wait=False)
 
                     # Should fall back to legacy builder
                     assert result["success"] is True
@@ -603,6 +558,7 @@ class TestWorkflowCompiler:
 # ============================================================================
 # HISTORY EXTRACTION TESTS (lines 1120-1152)
 # ============================================================================
+
 
 class TestHistoryExtraction:
     """Test history extraction in generate_image."""
@@ -613,25 +569,26 @@ class TestHistoryExtraction:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch.object(client, 'wait_for_completion') as mock_wait:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch.object(client, "wait_for_completion") as mock_wait:
                     mock_wait.return_value = {
                         "status": {"completed": True},
                         "outputs": {
                             "9": {
                                 "images": [
                                     {"filename": "img1.png", "subfolder": "", "type": "output"},
-                                    {"filename": "img2.png", "subfolder": "batch", "type": "output"}
+                                    {
+                                        "filename": "img2.png",
+                                        "subfolder": "batch",
+                                        "type": "output",
+                                    },
                                 ]
                             }
-                        }
+                        },
                     }
 
-                    result = client.generate_image(
-                        prompt="a sunset",
-                        wait=True
-                    )
+                    result = client.generate_image(prompt="a sunset", wait=True)
 
                     assert result["success"] is True
                     assert len(result["images"]) == 2
@@ -643,20 +600,14 @@ class TestHistoryExtraction:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch.object(client, 'wait_for_completion') as mock_wait:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch.object(client, "wait_for_completion") as mock_wait:
                     mock_wait.return_value = {
-                        "status": {
-                            "status_str": "error",
-                            "messages": [["Node 5 failed", {}]]
-                        }
+                        "status": {"status_str": "error", "messages": [["Node 5 failed", {}]]}
                     }
 
-                    result = client.generate_image(
-                        prompt="a sunset",
-                        wait=True
-                    )
+                    result = client.generate_image(prompt="a sunset", wait=True)
 
                     assert result["success"] is False
                     assert "error" in result["error"].lower() or "Node" in result["error"]
@@ -667,18 +618,15 @@ class TestHistoryExtraction:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch.object(client, 'wait_for_completion') as mock_wait:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch.object(client, "wait_for_completion") as mock_wait:
                     mock_wait.return_value = {
                         "status": {"completed": True},
-                        "outputs": {}  # No outputs
+                        "outputs": {},  # No outputs
                     }
 
-                    result = client.generate_image(
-                        prompt="a sunset",
-                        wait=True
-                    )
+                    result = client.generate_image(prompt="a sunset", wait=True)
 
                     assert result["success"] is False
                     assert len(result["images"]) == 0
@@ -689,14 +637,10 @@ class TestHistoryExtraction:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch.object(client, 'wait_for_completion', return_value=None):
-                    result = client.generate_image(
-                        prompt="a sunset",
-                        wait=True,
-                        timeout=1.0
-                    )
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch.object(client, "wait_for_completion", return_value=None):
+                    result = client.generate_image(prompt="a sunset", wait=True, timeout=1.0)
 
                     assert result["success"] is False
                     assert "timed out" in result["error"].lower()
@@ -705,6 +649,7 @@ class TestHistoryExtraction:
 # ============================================================================
 # VIDEO GENERATION FALLBACK TESTS (lines 1391-1408)
 # ============================================================================
+
 
 class TestVideoGenerationFallback:
     """Test video generation fallback to legacy builder."""
@@ -715,17 +660,15 @@ class TestVideoGenerationFallback:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch('comfy_headless.video.build_video_workflow') as mock_build:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch("comfy_headless.video.build_video_workflow") as mock_build:
                     mock_build.return_value = {
                         "7": {"class_type": "KSampler", "inputs": {"seed": 42}}
                     }
 
                     result = client.generate_video(
-                        prompt="a cat walking",
-                        preset="quick",
-                        wait=False
+                        prompt="a cat walking", preset="quick", wait=False
                     )
 
                     assert result["success"] is True
@@ -736,20 +679,16 @@ class TestVideoGenerationFallback:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch('comfy_headless.video.build_video_workflow') as mock_build:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch("comfy_headless.video.build_video_workflow") as mock_build:
                     mock_build.side_effect = Exception("Video module error")
 
-                    with patch.object(client, 'build_video_workflow') as mock_legacy:
-                        mock_legacy.return_value = {
-                            "7": {"inputs": {"seed": 99}}
-                        }
+                    with patch.object(client, "build_video_workflow") as mock_legacy:
+                        mock_legacy.return_value = {"7": {"inputs": {"seed": 99}}}
 
                         result = client.generate_video(
-                            prompt="a cat walking",
-                            preset="quick",
-                            wait=False
+                            prompt="a cat walking", preset="quick", wait=False
                         )
 
                         # Should use legacy builder
@@ -762,12 +701,12 @@ class TestVideoGenerationFallback:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch('comfy_headless.video.build_video_workflow') as mock_build:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch("comfy_headless.video.build_video_workflow") as mock_build:
                     mock_build.return_value = {"7": {"inputs": {"seed": 42}}}
 
-                    with patch.object(client, 'wait_for_completion') as mock_wait:
+                    with patch.object(client, "wait_for_completion") as mock_wait:
                         mock_wait.return_value = {
                             "status": {"completed": True},
                             "outputs": {
@@ -776,13 +715,11 @@ class TestVideoGenerationFallback:
                                         {"filename": "video.mp4", "subfolder": "", "type": "output"}
                                     ]
                                 }
-                            }
+                            },
                         }
 
                         result = client.generate_video(
-                            prompt="a cat walking",
-                            preset="quick",
-                            wait=True
+                            prompt="a cat walking", preset="quick", wait=True
                         )
 
                         assert result["success"] is True
@@ -795,27 +732,28 @@ class TestVideoGenerationFallback:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch('comfy_headless.video.build_video_workflow') as mock_build:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch("comfy_headless.video.build_video_workflow") as mock_build:
                     mock_build.return_value = {"7": {"inputs": {"seed": 42}}}
 
-                    with patch.object(client, 'wait_for_completion') as mock_wait:
+                    with patch.object(client, "wait_for_completion") as mock_wait:
                         mock_wait.return_value = {
                             "status": {"completed": True},
                             "outputs": {
                                 "9": {
                                     "videos": [
-                                        {"filename": "output.mp4", "subfolder": "", "type": "output"}
+                                        {
+                                            "filename": "output.mp4",
+                                            "subfolder": "",
+                                            "type": "output",
+                                        }
                                     ]
                                 }
-                            }
+                            },
                         }
 
-                        result = client.generate_video(
-                            prompt="a cat walking",
-                            wait=True
-                        )
+                        result = client.generate_video(prompt="a cat walking", wait=True)
 
                         assert result["success"] is True
                         assert len(result["videos"]) == 1
@@ -826,12 +764,12 @@ class TestVideoGenerationFallback:
 
         client = ComfyClient()
 
-        with patch.object(client, 'ensure_online'):
-            with patch.object(client, 'queue_prompt', return_value="prompt-123"):
-                with patch('comfy_headless.video.build_video_workflow') as mock_build:
+        with patch.object(client, "ensure_online"):
+            with patch.object(client, "queue_prompt", return_value="prompt-123"):
+                with patch("comfy_headless.video.build_video_workflow") as mock_build:
                     mock_build.return_value = {"7": {"inputs": {"seed": 42}}}
 
-                    result = client.generate_video(
+                    client.generate_video(
                         prompt="a cat walking",
                         width=640,
                         height=480,
@@ -841,7 +779,7 @@ class TestVideoGenerationFallback:
                         cfg=8.0,
                         seed=12345,
                         motion_scale=1.2,
-                        wait=False
+                        wait=False,
                     )
 
                     # Verify overrides were passed
@@ -855,6 +793,7 @@ class TestVideoGenerationFallback:
 # BATCH GENERATION TESTS (additional coverage)
 # ============================================================================
 
+
 class TestBatchGenerationExtended:
     """Extended batch generation tests."""
 
@@ -864,19 +803,19 @@ class TestBatchGenerationExtended:
 
         client = ComfyClient()
 
-        with patch.object(client, 'generate_image') as mock_gen:
+        with patch.object(client, "generate_image") as mock_gen:
             mock_gen.return_value = {
                 "success": True,
                 "images": [{"filename": "test.png"}],
                 "error": None,
                 "seed": 123,
-                "prompt_id": "abc"
+                "prompt_id": "abc",
             }
 
             result = client.generate_batch(
                 prompts=["prompt1", "prompt2", "prompt3"],
                 seeds=[100],  # Only one seed, should pad with -1
-                check_vram=False
+                check_vram=False,
             )
 
             assert result["success"] is True
@@ -892,19 +831,17 @@ class TestBatchGenerationExtended:
         def on_progress(idx, total, progress, status):
             progress_calls.append((idx, total, progress, status))
 
-        with patch.object(client, 'generate_image') as mock_gen:
+        with patch.object(client, "generate_image") as mock_gen:
             mock_gen.return_value = {
                 "success": True,
                 "images": [{"filename": "test.png"}],
                 "error": None,
                 "seed": 123,
-                "prompt_id": "abc"
+                "prompt_id": "abc",
             }
 
-            result = client.generate_batch(
-                prompts=["p1", "p2"],
-                check_vram=False,
-                on_progress=on_progress
+            client.generate_batch(
+                prompts=["p1", "p2"], check_vram=False, on_progress=on_progress
             )
 
             assert len(progress_calls) > 0
@@ -929,14 +866,11 @@ class TestBatchGenerationExtended:
                 "images": [{"filename": "test.png"}],
                 "error": None,
                 "seed": 123,
-                "prompt_id": "abc"
+                "prompt_id": "abc",
             }
 
-        with patch.object(client, 'generate_image', side_effect=mock_generate):
-            result = client.generate_batch(
-                prompts=["p1", "p2", "p3"],
-                check_vram=False
-            )
+        with patch.object(client, "generate_image", side_effect=mock_generate):
+            result = client.generate_batch(prompts=["p1", "p2", "p3"], check_vram=False)
 
             assert result["success"] is False
             assert result["success_count"] == 2
@@ -946,6 +880,7 @@ class TestBatchGenerationExtended:
 # ============================================================================
 # REQUEST METHOD EXTENDED TESTS
 # ============================================================================
+
 
 class TestRequestMethodExtended:
     """Extended tests for _request method."""
@@ -960,7 +895,7 @@ class TestRequestMethodExtended:
         # Reset circuit breaker to ensure it's not open
         client._circuit.reset()
 
-        with patch.object(client.session, 'request') as mock_request:
+        with patch.object(client.session, "request") as mock_request:
             mock_request.side_effect = RuntimeError("Unexpected error")
 
             with pytest.raises(ComfyUIConnectionError) as exc_info:
@@ -975,11 +910,11 @@ class TestRequestMethodExtended:
 
         client = ComfyClient()
 
-        with patch.object(client, '_request') as mock_request:
+        with patch.object(client, "_request") as mock_request:
             mock_response = MagicMock()
             mock_request.return_value = mock_response
 
-            result = client._post("/test", json={"data": 1})
+            client._post("/test", json={"data": 1})
 
             mock_request.assert_called_once_with("POST", "/test", json={"data": 1})
 
@@ -989,11 +924,11 @@ class TestRequestMethodExtended:
 
         client = ComfyClient()
 
-        with patch.object(client, '_request') as mock_request:
+        with patch.object(client, "_request") as mock_request:
             mock_response = MagicMock()
             mock_request.return_value = mock_response
 
-            result = client._get("/test", params={"q": "value"})
+            client._get("/test", params={"q": "value"})
 
             mock_request.assert_called_once_with("GET", "/test", params={"q": "value"})
 
@@ -1001,6 +936,7 @@ class TestRequestMethodExtended:
 # ============================================================================
 # CLEAR QUEUE EXTENDED TESTS
 # ============================================================================
+
 
 class TestClearQueueExtended:
     """Extended tests for clear_queue."""
@@ -1011,7 +947,7 @@ class TestClearQueueExtended:
 
         client = ComfyClient()
 
-        with patch.object(client, '_post') as mock_post:
+        with patch.object(client, "_post") as mock_post:
             mock_post.side_effect = Exception("Error")
 
             result = client.clear_queue()

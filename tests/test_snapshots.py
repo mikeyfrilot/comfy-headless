@@ -1,9 +1,9 @@
 """Tests for workflow snapshot system."""
 
-import pytest
 import tempfile
 import time
-from pathlib import Path
+
+import pytest
 
 
 class TestWorkflowSnapshot:
@@ -112,12 +112,14 @@ class TestSnapshotManager:
     def manager(self, temp_storage):
         """Create a snapshot manager with temp storage."""
         from comfy_headless.workflows import SnapshotManager
+
         return SnapshotManager(storage_path=temp_storage, max_snapshots_per_workflow=5)
 
     @pytest.fixture
     def sample_compiled(self):
         """Create a sample compiled workflow."""
         from comfy_headless.workflows import CompiledWorkflow
+
         return CompiledWorkflow(
             template_id="txt2img_standard",
             template_name="Text to Image",

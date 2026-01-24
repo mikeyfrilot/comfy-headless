@@ -33,17 +33,16 @@ Usage:
     print(secret.get_masked())  # "data****word"
 """
 
-import os
-import hmac
 import hashlib
+import hmac
+import os
 import secrets as crypto_secrets
-from typing import Optional, Dict, Any, Union
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from functools import lru_cache
+from typing import Any
 
-from .logging_config import get_logger
 from .exceptions import ComfyHeadlessError
+from .logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -72,13 +71,15 @@ __all__ = [
 
 # Try to import optional dependencies
 try:
-    from dotenv import load_dotenv, dotenv_values
+    from dotenv import dotenv_values, load_dotenv
+
     DOTENV_AVAILABLE = True
 except ImportError:
     DOTENV_AVAILABLE = False
 
 try:
     import hvac
+
     VAULT_AVAILABLE = True
 except ImportError:
     VAULT_AVAILABLE = False
@@ -87,6 +88,7 @@ except ImportError:
 # =============================================================================
 # SECRET VALUE CLASS
 # =============================================================================
+
 
 class SecretValue:
     """
@@ -136,7 +138,7 @@ class SecretValue:
         return bool(self._value)
 
     def __repr__(self) -> str:
-        return f"SecretValue('**********')"
+        return "SecretValue('**********')"
 
     def __str__(self) -> str:
         return "**********"
@@ -160,18 +162,20 @@ class SecretValue:
 # SECRETS MANAGER
 # =============================================================================
 
+
 @dataclass
 class SecretsManagerConfig:
     """Configuration for the secrets manager."""
+
     # Environment variables
     env_prefix: str = "COMFY_HEADLESS_"
     load_dotenv: bool = True
-    dotenv_path: Optional[Path] = None
+    dotenv_path: Path | None = None
 
     # Vault settings
     vault_enabled: bool = False
-    vault_url: Optional[str] = None
-    vault_token: Optional[str] = None
+    vault_url: str | None = None
+    vault_token: str | None = None
     vault_mount_point: str = "secret"
     vault_path_prefix: str = "comfy-headless"
 
@@ -204,9 +208,9 @@ class SecretsManager:
             ...
     """
 
-    def __init__(self, config: Optional[SecretsManagerConfig] = None):
+    def __init__(self, config: SecretsManagerConfig | None = None):
         self.config = config or SecretsManagerConfig()
-        self._cache: Dict[str, SecretValue] = {}
+        self._cache: dict[str, SecretValue] = {}
         self._vault_client = None
 
         # Load .env file if available
@@ -237,7 +241,7 @@ class SecretsManager:
                 logger.warning(f"Failed to connect to Vault: {e}")
                 self._vault_client = None
 
-    def _get_from_env(self, key: str) -> Optional[str]:
+    def _get_from_env(self, key: str) -> str | None:
         """Get secret from environment variable."""
         # Try with prefix
         prefixed_key = f"{self.config.env_prefix}{key}"
@@ -248,7 +252,7 @@ class SecretsManager:
         # Try without prefix
         return os.environ.get(key)
 
-    def _get_from_vault(self, key: str) -> Optional[str]:
+    def _get_from_vault(self, key: str) -> str | None:
         """Get secret from HashiCorp Vault."""
         if not self._vault_client:
             return None
@@ -267,9 +271,9 @@ class SecretsManager:
     def get(
         self,
         key: str,
-        default: Optional[str] = None,
+        default: str | None = None,
         required: bool = False,
-    ) -> Optional[SecretValue]:
+    ) -> SecretValue | None:
         """
         Get a secret value.
 
@@ -337,9 +341,9 @@ class SecretsManager:
     def get_str(
         self,
         key: str,
-        default: Optional[str] = None,
+        default: str | None = None,
         required: bool = False,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get a secret as a plain string. Use with caution."""
         secret = self.get(key, default, required)
         return secret.get_secret_value() if secret else None
@@ -369,7 +373,7 @@ class SecretsManager:
 # GLOBAL INSTANCE
 # =============================================================================
 
-_secrets_manager: Optional[SecretsManager] = None
+_secrets_manager: SecretsManager | None = None
 
 
 def get_secrets_manager() -> SecretsManager:
@@ -382,9 +386,9 @@ def get_secrets_manager() -> SecretsManager:
 
 def get_secret(
     key: str,
-    default: Optional[str] = None,
+    default: str | None = None,
     required: bool = False,
-) -> Optional[SecretValue]:
+) -> SecretValue | None:
     """
     Get a secret using the global manager.
 
@@ -395,9 +399,9 @@ def get_secret(
 
 def get_secret_str(
     key: str,
-    default: Optional[str] = None,
+    default: str | None = None,
     required: bool = False,
-) -> Optional[str]:
+) -> str | None:
     """Get a secret as a plain string using the global manager."""
     return get_secrets_manager().get_str(key, default, required)
 
@@ -405,6 +409,7 @@ def get_secret_str(
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
 
 def generate_token(length: int = 32) -> str:
     """
@@ -425,7 +430,7 @@ def generate_api_key(prefix: str = "sk") -> str:
     return f"{prefix}_{token}"
 
 
-def hash_secret(value: str, salt: Optional[str] = None) -> str:
+def hash_secret(value: str, salt: str | None = None) -> str:
     """
     Hash a secret value securely.
 
@@ -462,14 +467,15 @@ def mask_url_credentials(url: str) -> str:
     http://user:pass@host -> http://user:****@host
     """
     import re
+
     pattern = r"(://[^:]+:)([^@]+)(@)"
     return re.sub(pattern, r"\1****\3", url)
 
 
 def redact_dict(
-    data: Dict[str, Any],
-    sensitive_keys: Optional[list] = None,
-) -> Dict[str, Any]:
+    data: dict[str, Any],
+    sensitive_keys: list | None = None,
+) -> dict[str, Any]:
     """
     Redact sensitive values from a dictionary for logging.
 
@@ -482,10 +488,19 @@ def redact_dict(
     """
     if sensitive_keys is None:
         sensitive_keys = [
-            "password", "passwd", "pwd",
-            "secret", "token", "api_key", "apikey",
-            "auth", "credential", "key",
-            "private", "access_token", "refresh_token",
+            "password",
+            "passwd",
+            "pwd",
+            "secret",
+            "token",
+            "api_key",
+            "apikey",
+            "auth",
+            "credential",
+            "key",
+            "private",
+            "access_token",
+            "refresh_token",
         ]
 
     sensitive_lower = [k.lower() for k in sensitive_keys]

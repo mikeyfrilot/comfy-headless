@@ -17,28 +17,23 @@ Usage:
         result = client.generate_image("a beautiful sunset")
 """
 
+import json
 import time
 import uuid
-from typing import Optional, Dict, Any, List, Callable, Union
-from contextlib import contextmanager
+from collections.abc import Callable
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from .config import settings
-from .logging_config import get_logger, log_timing, LogContext
 from .exceptions import (
     ComfyUIConnectionError,
     ComfyUIOfflineError,
-    QueueError,
-    GenerationTimeoutError,
-    GenerationFailedError,
-    NoOutputError,
-    Result,
 )
-from .retry import get_circuit_breaker, retry_with_backoff, RateLimiter
-import json
+from .logging_config import LogContext, get_logger
+from .retry import RateLimiter, get_circuit_breaker
 
 
 def _safe_json_parse(response: "requests.Response", context: str = "") -> dict:
@@ -60,12 +55,12 @@ def _safe_json_parse(response: "requests.Response", context: str = "") -> dict:
     except json.JSONDecodeError as e:
         logger.error(
             f"Invalid JSON response{f' ({context})' if context else ''}",
-            extra={"error": str(e), "response_text": response.text[:200] if response.text else ""}
+            extra={"error": str(e), "response_text": response.text[:200] if response.text else ""},
         )
         raise ComfyUIConnectionError(
             message=f"Invalid JSON response from ComfyUI{f' while {context}' if context else ''}",
             url=response.url,
-            cause=e
+            cause=e,
         )
 
 
@@ -93,16 +88,20 @@ def _safe_get_nested(data: Any, *keys: str, default: Any = None) -> Any:
             return default
     return current
 
+
 # Lazy import for video module to avoid circular imports
 _video_builder = None
+
 
 def _get_video_builder():
     """Lazy import of VideoWorkflowBuilder."""
     global _video_builder
     if _video_builder is None:
         from .video import get_video_builder
+
         _video_builder = get_video_builder()
     return _video_builder
+
 
 logger = get_logger(__name__)
 
@@ -120,9 +119,9 @@ class ComfyClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        rate_limit: Optional[int] = None,
-        rate_limit_per_seconds: float = 1.0
+        base_url: str | None = None,
+        rate_limit: int | None = None,
+        rate_limit_per_seconds: float = 1.0,
     ):
         """
         Initialize the ComfyUI client.
@@ -134,24 +133,24 @@ class ComfyClient:
         """
         self.base_url = (base_url or settings.comfyui.url).rstrip("/")
         self.client_id = str(uuid.uuid4())
-        self._session: Optional[requests.Session] = None
+        self._session: requests.Session | None = None
         self._circuit = get_circuit_breaker("comfyui")
 
         # Rate limiter (optional)
-        self._rate_limiter: Optional[RateLimiter] = None
+        self._rate_limiter: RateLimiter | None = None
         if rate_limit is not None and rate_limit > 0:
             self._rate_limiter = RateLimiter(rate=rate_limit, per_seconds=rate_limit_per_seconds)
             logger.debug(f"Rate limiter enabled: {rate_limit} req/{rate_limit_per_seconds}s")
 
         logger.info(
-            f"ComfyClient initialized",
-            extra={"base_url": self.base_url, "client_id": self.client_id[:8]}
+            "ComfyClient initialized",
+            extra={"base_url": self.base_url, "client_id": self.client_id[:8]},
         )
 
     @property
     def session(self) -> requests.Session:
         """Get or create the HTTP session with connection pooling."""
-        if self._session is None or not hasattr(self._session, 'headers'):
+        if self._session is None or not hasattr(self._session, "headers"):
             self._session = self._create_session()
         return self._session
 
@@ -197,11 +196,7 @@ class ComfyClient:
     # =========================================================================
 
     def _request(
-        self,
-        method: str,
-        endpoint: str,
-        timeout: Optional[float] = None,
-        **kwargs
+        self, method: str, endpoint: str, timeout: float | None = None, **kwargs
     ) -> requests.Response:
         """
         Make an HTTP request with circuit breaker and rate limiter protection.
@@ -226,18 +221,12 @@ class ComfyClient:
             if not self._rate_limiter.acquire(blocking=True, timeout=30.0):
                 logger.warning(f"Rate limit timeout for {endpoint}")
                 raise ComfyUIConnectionError(
-                    message="Rate limit timeout - too many requests",
-                    url=self.base_url
+                    message="Rate limit timeout - too many requests", url=self.base_url
                 )
 
         try:
             with self._circuit:
-                response = self.session.request(
-                    method,
-                    url,
-                    timeout=timeout,
-                    **kwargs
-                )
+                response = self.session.request(method, url, timeout=timeout, **kwargs)
                 return response
 
         except requests.exceptions.ConnectionError as e:
@@ -245,22 +234,16 @@ class ComfyClient:
             raise ComfyUIConnectionError(
                 message=f"Failed to connect to ComfyUI at {self.base_url}",
                 url=self.base_url,
-                cause=e
+                cause=e,
             )
         except requests.exceptions.Timeout as e:
             logger.warning(f"Request timeout: {endpoint}", extra={"timeout": timeout})
             raise ComfyUIConnectionError(
-                message=f"Request timed out after {timeout}s",
-                url=url,
-                cause=e
+                message=f"Request timed out after {timeout}s", url=url, cause=e
             )
         except Exception as e:
             logger.error(f"Request failed: {endpoint}", extra={"error": str(e)})
-            raise ComfyUIConnectionError(
-                message=f"Request failed: {e}",
-                url=url,
-                cause=e
-            )
+            raise ComfyUIConnectionError(message=f"Request failed: {e}", url=url, cause=e)
 
     def _get(self, endpoint: str, **kwargs) -> requests.Response:
         """Make a GET request."""
@@ -289,13 +272,13 @@ class ComfyClient:
             # Use tuple timeout: (connect_timeout, read_timeout) for faster failure
             response = requests.get(
                 f"{self.base_url}/system_stats",
-                timeout=(1.0, 1.0)  # Fast fail - 1 second connect, 1 second read
+                timeout=(1.0, 1.0),  # Fast fail - 1 second connect, 1 second read
             )
             return response.status_code == 200
         except Exception:
             return False
 
-    def get_system_stats(self) -> Optional[Dict]:
+    def get_system_stats(self) -> dict | None:
         """
         Get ComfyUI system stats including GPU and VRAM info.
 
@@ -331,7 +314,7 @@ class ComfyClient:
                 if devices:
                     vram_bytes = devices[0].get("vram_total", 0)
                     if vram_bytes > 0:
-                        vram_gb = vram_bytes / (1024 ** 3)
+                        vram_gb = vram_bytes / (1024**3)
                         logger.debug(f"Detected VRAM: {vram_gb:.1f}GB")
                         return vram_gb
         except Exception as e:
@@ -355,7 +338,7 @@ class ComfyClient:
                 if devices:
                     vram_free = devices[0].get("vram_free", 0)
                     if vram_free > 0:
-                        return vram_free / (1024 ** 3)
+                        return vram_free / (1024**3)
         except Exception as e:
             logger.debug(f"Free VRAM detection failed: {e}")
         return 0.0
@@ -370,11 +353,7 @@ class ComfyClient:
         if not self.is_online():
             raise ComfyUIOfflineError(url=self.base_url)
 
-    def check_vram_available(
-        self,
-        required_gb: float,
-        raise_on_insufficient: bool = False
-    ) -> bool:
+    def check_vram_available(self, required_gb: float, raise_on_insufficient: bool = False) -> bool:
         """
         Check if sufficient VRAM is available for an operation.
 
@@ -399,27 +378,19 @@ class ComfyClient:
 
         if free_vram < required_gb:
             logger.warning(
-                f"Insufficient VRAM",
-                extra={"required_gb": required_gb, "available_gb": free_vram}
+                "Insufficient VRAM", extra={"required_gb": required_gb, "available_gb": free_vram}
             )
             if raise_on_insufficient:
-                raise InsufficientVRAMError(
-                    required_gb=required_gb,
-                    available_gb=free_vram
-                )
+                raise InsufficientVRAMError(required_gb=required_gb, available_gb=free_vram)
             return False
 
         logger.debug(
-            f"VRAM check passed",
-            extra={"required_gb": required_gb, "available_gb": free_vram}
+            "VRAM check passed", extra={"required_gb": required_gb, "available_gb": free_vram}
         )
         return True
 
     def estimate_vram_for_image(
-        self,
-        width: int = 1024,
-        height: int = 1024,
-        batch_size: int = 1
+        self, width: int = 1024, height: int = 1024, batch_size: int = 1
     ) -> float:
         """
         Estimate VRAM required for image generation.
@@ -448,16 +419,12 @@ class ComfyClient:
 
         logger.debug(
             f"VRAM estimate for {width}x{height}",
-            extra={"estimated_gb": total, "batch_size": batch_size}
+            extra={"estimated_gb": total, "batch_size": batch_size},
         )
         return total
 
     def estimate_vram_for_video(
-        self,
-        width: int = 512,
-        height: int = 512,
-        frames: int = 16,
-        model: str = "animatediff"
+        self, width: int = 512, height: int = 512, frames: int = 16, model: str = "animatediff"
     ) -> float:
         """
         Estimate VRAM required for video generation.
@@ -496,19 +463,19 @@ class ComfyClient:
             # Hunyuan (original)
             "hunyuan": 2.0,
             # v2.5.0: Hunyuan 1.5
-            "hunyuan_15": 1.8,         # 720p FP16
-            "hunyuan_15_fast": 1.4,    # Distilled, 6-step
+            "hunyuan_15": 1.8,  # 720p FP16
+            "hunyuan_15_fast": 1.4,  # Distilled, 6-step
             "hunyuan_15_i2v": 1.8,
             # v2.5.0: LTX-Video 2
-            "ltxv": 1.3,               # Fast and efficient
+            "ltxv": 1.3,  # Fast and efficient
             "ltxv_i2v": 1.4,
             # v2.5.0: Wan
-            "wan": 1.0,                # 1.3B variant (very efficient)
-            "wan_14b": 1.6,            # 14B FP8
-            "wan_fast": 2.0,           # Dual model approach
+            "wan": 1.0,  # 1.3B variant (very efficient)
+            "wan_14b": 1.6,  # 14B FP8
+            "wan_fast": 2.0,  # Dual model approach
             "wan_i2v": 1.4,
             # v2.5.0: Mochi
-            "mochi": 2.2,              # 10B parameters
+            "mochi": 2.2,  # 10B parameters
             "mochi_fp8": 1.6,
         }
         multiplier = model_multipliers.get(model.lower(), 1.0)
@@ -517,7 +484,7 @@ class ComfyClient:
 
         logger.debug(
             f"VRAM estimate for {width}x{height}x{frames}f",
-            extra={"estimated_gb": total, "model": model}
+            extra={"estimated_gb": total, "model": model},
         )
         return total
 
@@ -562,6 +529,7 @@ class ComfyClient:
 
         try:
             from .video import get_recommended_preset
+
             return get_recommended_preset(intent=intent, vram_gb=vram)
         except ImportError:
             # Fallback if video module unavailable
@@ -581,7 +549,7 @@ class ComfyClient:
     # MODELS & INFO
     # =========================================================================
 
-    def _get_object_info(self, node_type: str, input_name: str) -> List[str]:
+    def _get_object_info(self, node_type: str, input_name: str) -> list[str]:
         """Get input options for a node type."""
         try:
             response = self._get(f"/object_info/{node_type}")
@@ -611,29 +579,29 @@ class ComfyClient:
             logger.debug(f"Failed to get object info for {node_type}: {e}")
         return []
 
-    def get_checkpoints(self) -> List[str]:
+    def get_checkpoints(self) -> list[str]:
         """Get available checkpoint models."""
         return self._get_object_info("CheckpointLoaderSimple", "ckpt_name")
 
-    def get_samplers(self) -> List[str]:
+    def get_samplers(self) -> list[str]:
         """Get available samplers."""
         samplers = self._get_object_info("KSampler", "sampler_name")
         return samplers or ["euler", "euler_ancestral", "dpmpp_2m", "dpmpp_sde"]
 
-    def get_schedulers(self) -> List[str]:
+    def get_schedulers(self) -> list[str]:
         """Get available schedulers."""
         schedulers = self._get_object_info("KSampler", "scheduler")
         return schedulers or ["normal", "karras", "exponential", "sgm_uniform"]
 
-    def get_loras(self) -> List[str]:
+    def get_loras(self) -> list[str]:
         """Get available LoRA models."""
         return self._get_object_info("LoraLoader", "lora_name")
 
-    def get_motion_models(self) -> List[str]:
+    def get_motion_models(self) -> list[str]:
         """Get available AnimateDiff motion models."""
         return self._get_object_info("ADE_LoadAnimateDiffModel", "model_name")
 
-    def get_all_installed_nodes(self) -> List[str]:
+    def get_all_installed_nodes(self) -> list[str]:
         """
         Get all installed node types (class_types) in ComfyUI.
 
@@ -656,7 +624,7 @@ class ComfyClient:
             logger.debug(f"Failed to get all installed nodes: {e}")
         return []
 
-    def check_workflow_dependencies(self, workflow: Dict) -> Dict[str, Any]:
+    def check_workflow_dependencies(self, workflow: dict) -> dict[str, Any]:
         """
         Check if all nodes in a workflow are installed in ComfyUI.
 
@@ -686,7 +654,7 @@ class ComfyClient:
         installed = []
         missing = []
 
-        for class_type in workflow_nodes.keys():
+        for class_type in workflow_nodes:
             if class_type in installed_nodes:
                 installed.append(class_type)
             else:
@@ -705,7 +673,7 @@ class ComfyClient:
     # QUEUE MANAGEMENT
     # =========================================================================
 
-    def get_queue(self) -> Dict:
+    def get_queue(self) -> dict:
         """Get current queue status."""
         try:
             response = self._get("/queue")
@@ -718,7 +686,7 @@ class ComfyClient:
             logger.debug(f"Failed to get queue: {e}")
         return {"queue_running": [], "queue_pending": []}
 
-    def get_history(self, prompt_id: Optional[str] = None) -> Dict:
+    def get_history(self, prompt_id: str | None = None) -> dict:
         """Get execution history, optionally for a specific prompt."""
         try:
             endpoint = f"/history/{prompt_id}" if prompt_id else "/history"
@@ -758,7 +726,7 @@ class ComfyClient:
     # PROMPT EXECUTION
     # =========================================================================
 
-    def queue_prompt(self, workflow: Dict) -> Optional[str]:
+    def queue_prompt(self, workflow: dict) -> str | None:
         """
         Queue a workflow for execution.
 
@@ -778,11 +746,7 @@ class ComfyClient:
 
         try:
             payload = {"prompt": workflow, "client_id": self.client_id}
-            response = self._post(
-                "/prompt",
-                json=payload,
-                timeout=settings.comfyui.timeout_queue
-            )
+            response = self._post("/prompt", json=payload, timeout=settings.comfyui.timeout_queue)
 
             if response.ok:
                 data = _safe_json_parse(response, "queueing prompt")
@@ -791,8 +755,7 @@ class ComfyClient:
                     logger.warning("Queue response missing prompt_id")
                     return None
                 logger.info(
-                    f"Queued prompt",
-                    extra={"prompt_id": prompt_id[:8] if prompt_id else None}
+                    "Queued prompt", extra={"prompt_id": prompt_id[:8] if prompt_id else None}
                 )
                 return prompt_id
             else:
@@ -809,10 +772,10 @@ class ComfyClient:
     def wait_for_completion(
         self,
         prompt_id: str,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         poll_interval: float = 0.5,
-        on_progress: Optional[Callable[[float, str], None]] = None
-    ) -> Optional[Dict]:
+        on_progress: Callable[[float, str], None] | None = None,
+    ) -> dict | None:
         """
         Wait for a prompt to complete.
 
@@ -828,7 +791,7 @@ class ComfyClient:
         timeout = timeout or settings.generation.generation_timeout
         start = time.time()
 
-        logger.debug(f"Waiting for completion", extra={"prompt_id": prompt_id[:8]})
+        logger.debug("Waiting for completion", extra={"prompt_id": prompt_id[:8]})
 
         last_progress = 0.0
 
@@ -845,8 +808,8 @@ class ComfyClient:
                         if on_progress:
                             on_progress(1.0, "Completed")
                         logger.info(
-                            f"Generation completed",
-                            extra={"prompt_id": prompt_id[:8], "elapsed": f"{elapsed:.1f}s"}
+                            "Generation completed",
+                            extra={"prompt_id": prompt_id[:8], "elapsed": f"{elapsed:.1f}s"},
                         )
                         return entry
 
@@ -854,8 +817,8 @@ class ComfyClient:
                         if on_progress:
                             on_progress(last_progress, "Error")
                         logger.warning(
-                            f"Generation failed",
-                            extra={"prompt_id": prompt_id[:8], "status": status}
+                            "Generation failed",
+                            extra={"prompt_id": prompt_id[:8], "status": status},
                         )
                         return entry
 
@@ -863,14 +826,13 @@ class ComfyClient:
                     if on_progress:
                         # Try to get node progress from status messages
                         messages = status.get("messages", [])
-                        executing_node = None
                         for msg in messages:
                             if isinstance(msg, list) and len(msg) >= 2:
                                 if msg[0] == "execution_cached":
                                     # Some nodes were cached
                                     pass
                                 elif msg[0] == "executing":
-                                    executing_node = msg[1] if len(msg) > 1 else None
+                                    msg[1] if len(msg) > 1 else None
 
                         # Estimate progress based on elapsed time
                         time_progress = min(0.95, elapsed / timeout)
@@ -927,8 +889,7 @@ class ComfyClient:
             time.sleep(poll_interval)
 
         logger.warning(
-            f"Generation timed out",
-            extra={"prompt_id": prompt_id[:8], "timeout": timeout}
+            "Generation timed out", extra={"prompt_id": prompt_id[:8], "timeout": timeout}
         )
         return None
 
@@ -937,11 +898,8 @@ class ComfyClient:
     # =========================================================================
 
     def get_image(
-        self,
-        filename: str,
-        subfolder: str = "",
-        folder_type: str = "output"
-    ) -> Optional[bytes]:
+        self, filename: str, subfolder: str = "", folder_type: str = "output"
+    ) -> bytes | None:
         """
         Download a generated image.
 
@@ -955,11 +913,7 @@ class ComfyClient:
         """
         try:
             params = {"filename": filename, "subfolder": subfolder, "type": folder_type}
-            response = self._get(
-                "/view",
-                params=params,
-                timeout=settings.comfyui.timeout_image
-            )
+            response = self._get("/view", params=params, timeout=settings.comfyui.timeout_image)
             if response.ok:
                 logger.debug(f"Downloaded image: {filename}")
                 return response.content
@@ -968,19 +922,12 @@ class ComfyClient:
         return None
 
     def get_video(
-        self,
-        filename: str,
-        subfolder: str = "",
-        folder_type: str = "output"
-    ) -> Optional[bytes]:
+        self, filename: str, subfolder: str = "", folder_type: str = "output"
+    ) -> bytes | None:
         """Download a generated video."""
         try:
             params = {"filename": filename, "subfolder": subfolder, "type": folder_type}
-            response = self._get(
-                "/view",
-                params=params,
-                timeout=settings.comfyui.timeout_video
-            )
+            response = self._get("/view", params=params, timeout=settings.comfyui.timeout_video)
             if response.ok:
                 logger.debug(f"Downloaded video: {filename}")
                 return response.content
@@ -1005,7 +952,7 @@ class ComfyClient:
         scheduler: str = "normal",
         seed: int = -1,
         batch_size: int = 1,
-    ) -> Dict:
+    ) -> dict:
         """Build a basic txt2img workflow."""
         if seed == -1:
             seed = int(time.time() * 1000) % (2**32)
@@ -1073,7 +1020,7 @@ class ComfyClient:
         cfg: float = 7.0,
         seed: int = -1,
         motion_scale: float = 1.0,
-    ) -> Dict:
+    ) -> dict:
         """Build an AnimateDiff video workflow."""
         if seed == -1:
             seed = int(time.time() * 1000) % (2**32)
@@ -1168,9 +1115,9 @@ class ComfyClient:
         scheduler: str = "normal",
         seed: int = -1,
         wait: bool = True,
-        timeout: Optional[float] = None,
-        on_progress: Optional[Callable[[float, str], None]] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | None = None,
+        on_progress: Callable[[float, str], None] | None = None,
+    ) -> dict[str, Any]:
         """
         High-level image generation with optional preset support.
 
@@ -1208,8 +1155,8 @@ class ComfyClient:
             }
 
             logger.info(
-                f"Starting image generation",
-                extra={"width": width, "height": height, "steps": steps, "preset": preset}
+                "Starting image generation",
+                extra={"width": width, "height": height, "steps": steps, "preset": preset},
             )
 
             try:
@@ -1221,7 +1168,7 @@ class ComfyClient:
             # Try using WorkflowCompiler if preset is specified
             if preset:
                 try:
-                    from .workflows import compile_workflow, GENERATION_PRESETS
+                    from .workflows import GENERATION_PRESETS, compile_workflow
 
                     if preset in GENERATION_PRESETS:
                         compiled = compile_workflow(
@@ -1236,7 +1183,9 @@ class ComfyClient:
                         if compiled.is_valid:
                             workflow = compiled.workflow
                             # Extract seed from compiled workflow (safe nested access)
-                            result["seed"] = _safe_get_nested(workflow, "3", "inputs", "seed", default=seed)
+                            result["seed"] = _safe_get_nested(
+                                workflow, "3", "inputs", "seed", default=seed
+                            )
                             logger.debug(f"Using WorkflowCompiler with preset '{preset}'")
                         else:
                             logger.warning(f"Workflow compilation errors: {compiled.errors}")
@@ -1296,19 +1245,18 @@ class ComfyClient:
                         if isinstance(images_list, list):
                             for img in images_list:
                                 if isinstance(img, dict):
-                                    result["images"].append({
-                                        "filename": img.get("filename"),
-                                        "subfolder": img.get("subfolder", ""),
-                                        "type": img.get("type", "output"),
-                                    })
+                                    result["images"].append(
+                                        {
+                                            "filename": img.get("filename"),
+                                            "subfolder": img.get("subfolder", ""),
+                                            "type": img.get("type", "output"),
+                                        }
+                                    )
 
             result["success"] = len(result["images"]) > 0
 
             if result["success"]:
-                logger.info(
-                    f"Generation complete",
-                    extra={"image_count": len(result["images"])}
-                )
+                logger.info("Generation complete", extra={"image_count": len(result["images"])})
             else:
                 logger.warning("Generation produced no images")
 
@@ -1316,7 +1264,7 @@ class ComfyClient:
 
     def generate_batch(
         self,
-        prompts: List[str],
+        prompts: list[str],
         negative_prompt: str = "",
         preset: str = "fast",
         checkpoint: str = "",
@@ -1326,11 +1274,11 @@ class ComfyClient:
         cfg: float = 7.0,
         sampler: str = "euler",
         scheduler: str = "normal",
-        seeds: Optional[List[int]] = None,
+        seeds: list[int] | None = None,
         max_concurrent: int = 1,
         check_vram: bool = True,
-        on_progress: Optional[Callable[[int, int, float, str], None]] = None,
-    ) -> Dict[str, Any]:
+        on_progress: Callable[[int, int, float, str], None] | None = None,
+    ) -> dict[str, Any]:
         """
         Generate multiple images from a list of prompts.
 
@@ -1365,8 +1313,7 @@ class ComfyClient:
             estimated = self.estimate_vram_for_image(width, height, max_concurrent)
             if not self.check_vram_available(estimated):
                 logger.warning(
-                    f"Batch may exceed VRAM",
-                    extra={"estimated_gb": estimated, "batch_size": total}
+                    "Batch may exceed VRAM", extra={"estimated_gb": estimated, "batch_size": total}
                 )
 
         results = []
@@ -1415,25 +1362,27 @@ class ComfyClient:
             except Exception as e:
                 logger.error(f"Batch item {idx} failed: {e}")
                 errors.append(f"Prompt {idx}: {str(e)}")
-                results.append({
-                    "success": False,
-                    "error": str(e),
-                    "images": [],
-                    "prompt_id": None,
-                    "seed": seed,
-                })
+                results.append(
+                    {
+                        "success": False,
+                        "error": str(e),
+                        "images": [],
+                        "prompt_id": None,
+                        "seed": seed,
+                    }
+                )
 
         elapsed = time_module.time() - start_time
         success_count = sum(1 for r in results if r.get("success", False))
 
         logger.info(
-            f"Batch complete",
+            "Batch complete",
             extra={
                 "total": total,
                 "success": success_count,
                 "failed": total - success_count,
-                "elapsed": f"{elapsed:.1f}s"
-            }
+                "elapsed": f"{elapsed:.1f}s",
+            },
         )
 
         return {
@@ -1450,22 +1399,22 @@ class ComfyClient:
         prompt: str,
         negative_prompt: str = "",
         preset: str = "standard",
-        init_image: Optional[str] = None,
+        init_image: str | None = None,
         wait: bool = True,
-        timeout: Optional[float] = None,
-        on_progress: Optional[Callable[[float, str], None]] = None,
+        timeout: float | None = None,
+        on_progress: Callable[[float, str], None] | None = None,
         # Override individual settings (backwards compatible)
         checkpoint: str = "",
         motion_model: str = "",
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-        frames: Optional[int] = None,
-        fps: Optional[int] = None,
-        steps: Optional[int] = None,
-        cfg: Optional[float] = None,
+        width: int | None = None,
+        height: int | None = None,
+        frames: int | None = None,
+        fps: int | None = None,
+        steps: int | None = None,
+        cfg: float | None = None,
         seed: int = -1,
-        motion_scale: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        motion_scale: float | None = None,
+    ) -> dict[str, Any]:
         """
         High-level video generation using multi-model VideoWorkflowBuilder.
 
@@ -1501,8 +1450,7 @@ class ComfyClient:
             }
 
             logger.info(
-                f"Starting video generation",
-                extra={"preset": preset, "prompt_length": len(prompt)}
+                "Starting video generation", extra={"preset": preset, "prompt_length": len(prompt)}
             )
 
             try:
@@ -1513,7 +1461,7 @@ class ComfyClient:
 
             # Build workflow using VideoWorkflowBuilder
             try:
-                from .video import build_video_workflow, VIDEO_PRESETS
+                from .video import build_video_workflow
 
                 # Build overrides dict from non-None parameters
                 overrides = {}
@@ -1541,14 +1489,17 @@ class ComfyClient:
                     negative=negative_prompt or "ugly, blurry, low quality, distorted",
                     preset=preset,
                     init_image=init_image,
-                    **overrides
+                    **overrides,
                 )
 
                 # Extract actual seed from workflow (video.py generates random if -1)
                 # Find KSampler node and extract seed (safe access)
                 if isinstance(workflow, dict):
                     for node in workflow.values():
-                        if isinstance(node, dict) and node.get("class_type") in ("KSampler", "HunyuanVideoSampler"):
+                        if isinstance(node, dict) and node.get("class_type") in (
+                            "KSampler",
+                            "HunyuanVideoSampler",
+                        ):
                             result["seed"] = _safe_get_nested(node, "inputs", "seed", default=seed)
                             break
 
@@ -1605,18 +1556,19 @@ class ComfyClient:
                                 if isinstance(video_list, list):
                                     for vid in video_list:
                                         if isinstance(vid, dict):
-                                            result["videos"].append({
-                                                "filename": vid.get("filename"),
-                                                "subfolder": vid.get("subfolder", ""),
-                                                "type": vid.get("type", "output"),
-                                            })
+                                            result["videos"].append(
+                                                {
+                                                    "filename": vid.get("filename"),
+                                                    "subfolder": vid.get("subfolder", ""),
+                                                    "type": vid.get("type", "output"),
+                                                }
+                                            )
 
             result["success"] = len(result["videos"]) > 0
 
             if result["success"]:
                 logger.info(
-                    f"Video generation complete",
-                    extra={"video_count": len(result["videos"])}
+                    "Video generation complete", extra={"video_count": len(result["videos"])}
                 )
 
             return result

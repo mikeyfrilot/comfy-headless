@@ -26,16 +26,16 @@ Usage:
     )
 """
 
-import re
 import html
-from typing import Optional, List, Any, Dict, Union
+import re
 from pathlib import Path
+from typing import Any
 
 from .config import settings
 from .exceptions import (
-    InvalidPromptError,
-    InvalidParameterError,
     DimensionError,
+    InvalidParameterError,
+    InvalidPromptError,
     SecurityError,
     ValidationError,
 )
@@ -70,12 +70,13 @@ __all__ = [
 try:
     from pydantic import (
         BaseModel,
+        ConfigDict,
         Field,
+        SecretStr,
         field_validator,
         model_validator,
-        ConfigDict,
-        SecretStr,
     )
+
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
@@ -94,8 +95,8 @@ INJECTION_PATTERNS = [
     r"new\s+instructions?:",
     r"system\s*:",
     r"<\|.*?\|>",  # Special tokens
-    r"\[INST\]",   # Instruction markers
-    r"<<SYS>>",    # System prompt markers
+    r"\[INST\]",  # Instruction markers
+    r"<<SYS>>",  # System prompt markers
 ]
 
 # Characters that could be problematic in prompts
@@ -106,10 +107,7 @@ DANGEROUS_CHARS = [
 ]
 
 # Allowed characters in prompts (whitelist approach)
-PROMPT_ALLOWED_PATTERN = re.compile(
-    r"^[\w\s\.,!?'\"()\-:;@#$%&*+=/<>\[\]{}|~`\n\r]+$",
-    re.UNICODE
-)
+PROMPT_ALLOWED_PATTERN = re.compile(r"^[\w\s\.,!?'\"()\-:;@#$%&*+=/<>\[\]{}|~`\n\r]+$", re.UNICODE)
 
 # Path traversal patterns
 PATH_TRAVERSAL_PATTERNS = [
@@ -125,6 +123,7 @@ PATH_TRAVERSAL_PATTERNS = [
 # =============================================================================
 # PROMPT VALIDATION
 # =============================================================================
+
 
 def validate_prompt(
     prompt: str,
@@ -174,11 +173,14 @@ def validate_prompt(
             if re.search(pattern, prompt_lower, re.IGNORECASE):
                 logger.warning(
                     "Potential prompt injection detected",
-                    extra={"pattern": pattern, "prompt_preview": prompt[:100]}
+                    extra={"pattern": pattern, "prompt_preview": prompt[:100]},
                 )
                 raise SecurityError(
                     "Prompt contains potentially unsafe content",
-                    suggestions=["Remove special instruction-like text", "Use natural language only"]
+                    suggestions=[
+                        "Remove special instruction-like text",
+                        "Use natural language only",
+                    ],
                 )
 
     # Escape HTML if not allowed (after injection check)
@@ -204,12 +206,13 @@ def sanitize_prompt(prompt: str) -> str:
 # DIMENSION VALIDATION
 # =============================================================================
 
+
 def validate_dimensions(
     width: int,
     height: int,
     *,
     min_size: int = 64,
-    max_size: Optional[int] = None,
+    max_size: int | None = None,
     must_be_divisible_by: int = 8,
 ) -> tuple:
     """
@@ -233,9 +236,7 @@ def validate_dimensions(
     # Type check
     if not isinstance(width, int) or not isinstance(height, int):
         raise DimensionError(
-            int(width) if width else 0,
-            int(height) if height else 0,
-            "Dimensions must be integers"
+            int(width) if width else 0, int(height) if height else 0, "Dimensions must be integers"
         )
 
     # Minimum size
@@ -250,8 +251,7 @@ def validate_dimensions(
     if must_be_divisible_by > 0:
         if width % must_be_divisible_by != 0 or height % must_be_divisible_by != 0:
             raise DimensionError(
-                width, height,
-                f"Dimensions must be divisible by {must_be_divisible_by}"
+                width, height, f"Dimensions must be divisible by {must_be_divisible_by}"
             )
 
     return (width, height)
@@ -262,7 +262,7 @@ def clamp_dimensions(
     height: int,
     *,
     min_size: int = 64,
-    max_size: Optional[int] = None,
+    max_size: int | None = None,
     divisible_by: int = 8,
 ) -> tuple:
     """
@@ -288,12 +288,13 @@ def clamp_dimensions(
 # PATH VALIDATION
 # =============================================================================
 
+
 def validate_path(
     path: str,
     *,
     must_exist: bool = False,
-    allowed_extensions: Optional[List[str]] = None,
-    base_directory: Optional[Path] = None,
+    allowed_extensions: list[str] | None = None,
+    base_directory: Path | None = None,
 ) -> Path:
     """
     Validate a file path for security.
@@ -331,7 +332,7 @@ def validate_path(
         if ext not in [e.lower() for e in allowed_extensions]:
             raise ValidationError(
                 f"Invalid file type: {ext}",
-                suggestions=[f"Allowed types: {', '.join(allowed_extensions)}"]
+                suggestions=[f"Allowed types: {', '.join(allowed_extensions)}"],
             )
 
     # Check base directory containment
@@ -342,7 +343,7 @@ def validate_path(
         except ValueError:
             raise SecurityError(
                 "Path is outside allowed directory",
-                suggestions=["Use paths within the allowed directory only"]
+                suggestions=["Use paths within the allowed directory only"],
             )
 
     # Check existence
@@ -356,13 +357,14 @@ def validate_path(
 # PARAMETER VALIDATION
 # =============================================================================
 
+
 def validate_in_range(
-    value: Union[int, float],
+    value: int | float,
     name: str,
     *,
-    min_val: Optional[Union[int, float]] = None,
-    max_val: Optional[Union[int, float]] = None,
-) -> Union[int, float]:
+    min_val: int | float | None = None,
+    max_val: int | float | None = None,
+) -> int | float:
     """
     Validate that a numeric value is within range.
 
@@ -379,16 +381,10 @@ def validate_in_range(
         InvalidParameterError: If out of range
     """
     if min_val is not None and value < min_val:
-        raise InvalidParameterError(
-            name, value,
-            f"must be at least {min_val}"
-        )
+        raise InvalidParameterError(name, value, f"must be at least {min_val}")
 
     if max_val is not None and value > max_val:
-        raise InvalidParameterError(
-            name, value,
-            f"must be at most {max_val}"
-        )
+        raise InvalidParameterError(name, value, f"must be at most {max_val}")
 
     return value
 
@@ -396,7 +392,7 @@ def validate_in_range(
 def validate_choice(
     value: Any,
     name: str,
-    choices: List[Any],
+    choices: list[Any],
 ) -> Any:
     """
     Validate that a value is one of the allowed choices.
@@ -413,11 +409,7 @@ def validate_choice(
         InvalidParameterError: If not in choices
     """
     if value not in choices:
-        raise InvalidParameterError(
-            name, value,
-            "not a valid choice",
-            allowed_values=choices
-        )
+        raise InvalidParameterError(name, value, "not a valid choice", allowed_values=choices)
 
     return value
 
@@ -434,6 +426,7 @@ if PYDANTIC_AVAILABLE:
 
         All inputs are validated and sanitized automatically.
         """
+
         model_config = ConfigDict(
             str_strip_whitespace=True,
             validate_default=True,
@@ -441,45 +434,14 @@ if PYDANTIC_AVAILABLE:
         )
 
         prompt: str = Field(
-            ...,
-            min_length=1,
-            max_length=10000,
-            description="The generation prompt"
+            ..., min_length=1, max_length=10000, description="The generation prompt"
         )
-        negative_prompt: str = Field(
-            default="",
-            max_length=5000,
-            description="Negative prompt"
-        )
-        width: int = Field(
-            default=1024,
-            ge=64,
-            le=4096,
-            description="Image width"
-        )
-        height: int = Field(
-            default=1024,
-            ge=64,
-            le=4096,
-            description="Image height"
-        )
-        steps: int = Field(
-            default=25,
-            ge=1,
-            le=150,
-            description="Number of steps"
-        )
-        cfg: float = Field(
-            default=7.0,
-            ge=1.0,
-            le=30.0,
-            description="CFG scale"
-        )
-        seed: int = Field(
-            default=-1,
-            ge=-1,
-            description="Random seed (-1 for random)"
-        )
+        negative_prompt: str = Field(default="", max_length=5000, description="Negative prompt")
+        width: int = Field(default=1024, ge=64, le=4096, description="Image width")
+        height: int = Field(default=1024, ge=64, le=4096, description="Image height")
+        steps: int = Field(default=25, ge=1, le=150, description="Number of steps")
+        cfg: float = Field(default=7.0, ge=1.0, le=30.0, description="CFG scale")
+        seed: int = Field(default=-1, ge=-1, description="Random seed (-1 for random)")
 
         @field_validator("prompt", "negative_prompt")
         @classmethod
@@ -511,9 +473,9 @@ if PYDANTIC_AVAILABLE:
                 self.height = round(self.height / 8) * 8
             return self
 
-
     class VideoRequest(BaseModel):
         """Validated video generation request."""
+
         model_config = ConfigDict(
             str_strip_whitespace=True,
             extra="forbid",
@@ -534,9 +496,9 @@ if PYDANTIC_AVAILABLE:
                 v = v.replace(char, "")
             return html.escape(v)
 
-
     class ModelReference(BaseModel):
         """Validated model reference."""
+
         model_config = ConfigDict(extra="forbid")
 
         name: str = Field(..., min_length=1, max_length=500)
@@ -555,6 +517,7 @@ if PYDANTIC_AVAILABLE:
 # =============================================================================
 # VALIDATION DECORATORS
 # =============================================================================
+
 
 def validated_prompt(func):
     """
@@ -601,6 +564,7 @@ def validated_dimensions(func):
 # BATCH VALIDATION
 # =============================================================================
 
+
 def validate_generation_params(
     prompt: str,
     width: int = 1024,
@@ -609,7 +573,7 @@ def validate_generation_params(
     cfg: float = 7.0,
     seed: int = -1,
     negative_prompt: str = "",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Validate all generation parameters at once.
 

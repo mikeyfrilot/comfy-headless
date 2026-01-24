@@ -1,9 +1,8 @@
 """Extended tests for __main__.py CLI entry point to improve coverage."""
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-import sys
-import io
 
 
 class TestMainFunction:
@@ -21,6 +20,7 @@ class TestMainFunction:
 
         # Also test that we can import version
         from comfy_headless import __version__
+
         assert isinstance(__version__, str)
 
     def test_main_check_argument_parsing(self):
@@ -46,9 +46,10 @@ class TestMainFunction:
     def test_main_function_exists(self):
         """Test main function exists and is callable."""
         from comfy_headless.__main__ import main
+
         assert callable(main)
 
-    @patch('sys.argv', ['comfy_headless', '--url', 'http://192.168.1.100:8188'])
+    @patch("sys.argv", ["comfy_headless", "--url", "http://192.168.1.100:8188"])
     def test_main_custom_url_parsing(self):
         """Test custom URL is parsed correctly."""
         import argparse
@@ -56,8 +57,8 @@ class TestMainFunction:
         parser = argparse.ArgumentParser()
         parser.add_argument("--url", type=str, default="http://localhost:8188")
 
-        args = parser.parse_args(['--url', 'http://192.168.1.100:8188'])
-        assert args.url == 'http://192.168.1.100:8188'
+        args = parser.parse_args(["--url", "http://192.168.1.100:8188"])
+        assert args.url == "http://192.168.1.100:8188"
 
 
 class TestFeatureCheck:
@@ -82,13 +83,13 @@ class TestFeatureCheck:
         from comfy_headless.feature_flags import FEATURES
 
         # Should have at least some common features
-        assert 'ui' in FEATURES
+        assert "ui" in FEATURES
 
     def test_get_install_hint_returns_string(self):
         """Test get_install_hint returns install instruction."""
         from comfy_headless.feature_flags import get_install_hint
 
-        hint = get_install_hint('ui')
+        hint = get_install_hint("ui")
         assert isinstance(hint, str)
         assert len(hint) > 0
 
@@ -105,10 +106,10 @@ class TestArgParserEdgeCases:
         parser.add_argument("--share", action="store_true")
         parser.add_argument("--url", type=str, default="http://localhost:8188")
 
-        args = parser.parse_args(['--port', '8080', '--share', '--url', 'http://other:8188'])
+        args = parser.parse_args(["--port", "8080", "--share", "--url", "http://other:8188"])
         assert args.port == 8080
         assert args.share is True
-        assert args.url == 'http://other:8188'
+        assert args.url == "http://other:8188"
 
     def test_url_trailing_slash_handling(self):
         """Test URL with trailing slash."""
@@ -117,9 +118,9 @@ class TestArgParserEdgeCases:
         parser = argparse.ArgumentParser()
         parser.add_argument("--url", type=str, default="http://localhost:8188")
 
-        args = parser.parse_args(['--url', 'http://localhost:8188/'])
+        args = parser.parse_args(["--url", "http://localhost:8188/"])
         # The main function strips trailing slashes
-        assert args.url == 'http://localhost:8188/'
+        assert args.url == "http://localhost:8188/"
 
     def test_invalid_port_type(self):
         """Test invalid port type raises error."""
@@ -129,7 +130,7 @@ class TestArgParserEdgeCases:
         parser.add_argument("--port", "-p", type=int, default=7861)
 
         with pytest.raises(SystemExit):
-            parser.parse_args(['--port', 'not_a_number'])
+            parser.parse_args(["--port", "not_a_number"])
 
 
 class TestModuleImports:
@@ -138,12 +139,14 @@ class TestModuleImports:
     def test_main_module_importable(self):
         """Test __main__ module can be imported."""
         import comfy_headless.__main__
-        assert hasattr(comfy_headless.__main__, 'main')
+
+        assert hasattr(comfy_headless.__main__, "main")
 
     def test_main_function_signature(self):
         """Test main function takes no arguments."""
-        from comfy_headless.__main__ import main
         import inspect
+
+        from comfy_headless.__main__ import main
 
         sig = inspect.signature(main)
         assert len(sig.parameters) == 0
@@ -151,10 +154,5 @@ class TestModuleImports:
     def test_all_imports_work(self):
         """Test all imports in __main__ work."""
         # These are the imports used in __main__.py
-        import argparse
-        import sys
 
         # These should be importable
-        from comfy_headless import __version__
-        from comfy_headless import FEATURES, list_available_features, list_missing_features
-        from comfy_headless.feature_flags import get_install_hint

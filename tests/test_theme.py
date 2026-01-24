@@ -8,8 +8,7 @@ Tests cover:
 - Gradio 5 compatibility
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestColorDefinitions:
@@ -55,28 +54,31 @@ class TestColorDefinitions:
 
     def test_light_colors_are_valid_hex(self):
         """Test all LIGHT_COLORS are valid hex codes."""
-        from comfy_headless.theme import LIGHT_COLORS
         import re
 
-        hex_pattern = re.compile(r'^#[0-9A-Fa-f]{6}$')
+        from comfy_headless.theme import LIGHT_COLORS
+
+        hex_pattern = re.compile(r"^#[0-9A-Fa-f]{6}$")
         for name, color in LIGHT_COLORS.items():
             assert hex_pattern.match(color), f"Invalid hex color for {name}: {color}"
 
     def test_dark_colors_are_valid_hex(self):
         """Test all DARK_COLORS are valid hex codes."""
-        from comfy_headless.theme import DARK_COLORS
         import re
 
-        hex_pattern = re.compile(r'^#[0-9A-Fa-f]{6}$')
+        from comfy_headless.theme import DARK_COLORS
+
+        hex_pattern = re.compile(r"^#[0-9A-Fa-f]{6}$")
         for name, color in DARK_COLORS.items():
             assert hex_pattern.match(color), f"Invalid hex color for {name}: {color}"
 
     def test_accent_colors_are_valid_hex(self):
         """Test all ACCENT colors are valid hex codes."""
-        from comfy_headless.theme import ACCENT
         import re
 
-        hex_pattern = re.compile(r'^#[0-9A-Fa-f]{6}$')
+        from comfy_headless.theme import ACCENT
+
+        hex_pattern = re.compile(r"^#[0-9A-Fa-f]{6}$")
         for name, color in ACCENT.items():
             assert hex_pattern.match(color), f"Invalid hex color for {name}: {color}"
 
@@ -188,7 +190,7 @@ class TestGetCss:
 
     def test_get_css_matches_custom_css(self):
         """Test get_css returns CUSTOM_CSS constant."""
-        from comfy_headless.theme import get_css, CUSTOM_CSS
+        from comfy_headless.theme import CUSTOM_CSS, get_css
 
         assert get_css() == CUSTOM_CSS
 
@@ -267,13 +269,13 @@ class TestCreateComfyTheme:
 
     def test_create_comfy_theme_returns_theme(self):
         """Test create_comfy_theme returns a Gradio theme."""
+
         from comfy_headless.theme import create_comfy_theme
-        import gradio as gr
 
         theme = create_comfy_theme()
         # Should be a Gradio theme object
         assert theme is not None
-        assert hasattr(theme, 'set')
+        assert hasattr(theme, "set")
 
     def test_create_comfy_theme_uses_teal_primary(self):
         """Test theme uses teal instead of blue for primary."""
@@ -324,14 +326,6 @@ class TestThemeExports:
         from comfy_headless.theme import (
             create_comfy_theme,
             get_css,
-            get_theme_info,
-            LIGHT_COLORS,
-            DARK_COLORS,
-            ACCENT,
-            SEMANTIC,
-            SPACING,
-            RADIUS,
-            CUSTOM_CSS,
         )
 
         # All should be importable without error
@@ -345,15 +339,17 @@ class TestContrastCompliance:
     @staticmethod
     def hex_to_rgb(hex_color: str) -> tuple:
         """Convert hex color to RGB tuple."""
-        hex_color = hex_color.lstrip('#')
-        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        hex_color = hex_color.lstrip("#")
+        return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
     @staticmethod
     def luminance(rgb: tuple) -> float:
         """Calculate relative luminance."""
+
         def adjust(c):
             c = c / 255
             return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
         r, g, b = rgb
         return 0.2126 * adjust(r) + 0.7152 * adjust(g) + 0.0722 * adjust(b)
 
@@ -372,48 +368,36 @@ class TestContrastCompliance:
         """Test light mode text has sufficient contrast (4.5:1 min)."""
         from comfy_headless.theme import LIGHT_COLORS
 
-        ratio = self.contrast_ratio(
-            LIGHT_COLORS["text_primary"],
-            LIGHT_COLORS["background"]
-        )
+        ratio = self.contrast_ratio(LIGHT_COLORS["text_primary"], LIGHT_COLORS["background"])
         assert ratio >= 4.5, f"Light mode text contrast is {ratio:.2f}, need 4.5:1"
 
     def test_dark_mode_text_contrast(self):
         """Test dark mode text has sufficient contrast (4.5:1 min)."""
         from comfy_headless.theme import DARK_COLORS
 
-        ratio = self.contrast_ratio(
-            DARK_COLORS["text_primary"],
-            DARK_COLORS["background"]
-        )
+        ratio = self.contrast_ratio(DARK_COLORS["text_primary"], DARK_COLORS["background"])
         assert ratio >= 4.5, f"Dark mode text contrast is {ratio:.2f}, need 4.5:1"
 
     def test_light_mode_secondary_text_contrast(self):
         """Test light mode secondary text contrast (3:1 min for large text)."""
         from comfy_headless.theme import LIGHT_COLORS
 
-        ratio = self.contrast_ratio(
-            LIGHT_COLORS["text_secondary"],
-            LIGHT_COLORS["background"]
-        )
+        ratio = self.contrast_ratio(LIGHT_COLORS["text_secondary"], LIGHT_COLORS["background"])
         assert ratio >= 3.0, f"Light secondary text contrast is {ratio:.2f}, need 3:1"
 
     def test_dark_mode_secondary_text_contrast(self):
         """Test dark mode secondary text contrast (3:1 min for large text)."""
         from comfy_headless.theme import DARK_COLORS
 
-        ratio = self.contrast_ratio(
-            DARK_COLORS["text_secondary"],
-            DARK_COLORS["background"]
-        )
+        ratio = self.contrast_ratio(DARK_COLORS["text_secondary"], DARK_COLORS["background"])
         assert ratio >= 3.0, f"Dark secondary text contrast is {ratio:.2f}, need 3:1"
 
 
 class TestThemeIntegration:
     """Integration tests for theme with UI module."""
 
-    @patch('comfy_headless.ui.client')
-    @patch('comfy_headless.ui.intel')
+    @patch("comfy_headless.ui.client")
+    @patch("comfy_headless.ui.intel")
     def test_ui_uses_custom_theme(self, mock_intel, mock_client):
         """Test UI module imports and uses custom theme."""
         mock_client.is_online.return_value = False
@@ -454,9 +438,11 @@ class TestCSSValidation:
         """Test CSS has balanced braces."""
         from comfy_headless.theme import CUSTOM_CSS
 
-        open_braces = CUSTOM_CSS.count('{')
-        close_braces = CUSTOM_CSS.count('}')
-        assert open_braces == close_braces, f"Unbalanced braces: {open_braces} open, {close_braces} close"
+        open_braces = CUSTOM_CSS.count("{")
+        close_braces = CUSTOM_CSS.count("}")
+        assert open_braces == close_braces, (
+            f"Unbalanced braces: {open_braces} open, {close_braces} close"
+        )
 
     def test_css_has_no_syntax_errors(self):
         """Test CSS doesn't have common syntax errors."""

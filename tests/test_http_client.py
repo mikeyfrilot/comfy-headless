@@ -1,7 +1,5 @@
 """Tests for http_client module."""
 
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 
 
 class TestHttpClientInitialization:

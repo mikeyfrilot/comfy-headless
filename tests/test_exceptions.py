@@ -1,6 +1,5 @@
 """Tests for exceptions module."""
 
-import pytest
 
 
 class TestComfyHeadlessError:
@@ -18,11 +17,7 @@ class TestComfyHeadlessError:
         """Test error with details."""
         from comfy_headless.exceptions import ComfyHeadlessError
 
-        error = ComfyHeadlessError(
-            "Test error",
-            details={"key": "value"},
-            code="TEST_ERROR"
-        )
+        error = ComfyHeadlessError("Test error", details={"key": "value"}, code="TEST_ERROR")
         assert error.details["key"] == "value"
         assert error.code == "TEST_ERROR"
 
@@ -30,10 +25,7 @@ class TestComfyHeadlessError:
         """Test error with request ID."""
         from comfy_headless.exceptions import ComfyHeadlessError
 
-        error = ComfyHeadlessError(
-            "Test error",
-            request_id="abc123"
-        )
+        error = ComfyHeadlessError("Test error", request_id="abc123")
         assert error.request_id == "abc123"
         assert "abc123" in error.developer_message
         assert error.details["request_id"] == "abc123"
@@ -42,10 +34,7 @@ class TestComfyHeadlessError:
         """Test user-friendly message."""
         from comfy_headless.exceptions import ComfyHeadlessError
 
-        error = ComfyHeadlessError(
-            "Technical error details",
-            user_message="Something went wrong"
-        )
+        error = ComfyHeadlessError("Technical error details", user_message="Something went wrong")
         assert error.user_message == "Something went wrong"
         assert "Technical" in error.developer_message
 
@@ -53,10 +42,7 @@ class TestComfyHeadlessError:
         """Test recovery suggestions."""
         from comfy_headless.exceptions import ComfyHeadlessError
 
-        error = ComfyHeadlessError(
-            "Test",
-            suggestions=["Try this", "Or this"]
-        )
+        error = ComfyHeadlessError("Test", suggestions=["Try this", "Or this"])
         assert len(error.suggestions) == 2
         assert "Try this" in error.suggestions
 
@@ -73,11 +59,7 @@ class TestComfyHeadlessError:
         """Test JSON serialization."""
         from comfy_headless.exceptions import ComfyHeadlessError
 
-        error = ComfyHeadlessError(
-            "Test",
-            code="TEST",
-            request_id="req123"
-        )
+        error = ComfyHeadlessError("Test", code="TEST", request_id="req123")
         data = error.to_dict()
 
         assert data["error"] is True
@@ -151,7 +133,7 @@ class TestResult:
 
     def test_failure_result(self):
         """Test failed result."""
-        from comfy_headless.exceptions import Result, ComfyHeadlessError
+        from comfy_headless.exceptions import ComfyHeadlessError, Result
 
         error = ComfyHeadlessError("Test error")
         result = Result.failure(error)
@@ -161,7 +143,7 @@ class TestResult:
 
     def test_value_or(self):
         """Test value_or default."""
-        from comfy_headless.exceptions import Result, ComfyHeadlessError
+        from comfy_headless.exceptions import ComfyHeadlessError, Result
 
         success = Result.success("value")
         failure = Result.failure(ComfyHeadlessError("error"))

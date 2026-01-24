@@ -43,7 +43,9 @@ def run_hypothesis_fuzz(
 
     # Build pytest command
     cmd = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         "comfy_headless/tests/test_fuzz.py",
         "-v" if verbose else "-q",
         f"--hypothesis-seed={int(time.time())}",
@@ -51,11 +53,13 @@ def run_hypothesis_fuzz(
 
     # Add coverage if requested
     if with_coverage:
-        cmd.extend([
-            "--cov=comfy_headless",
-            "--cov-report=term-missing",
-            "--cov-report=html:htmlcov_fuzz",
-        ])
+        cmd.extend(
+            [
+                "--cov=comfy_headless",
+                "--cov-report=term-missing",
+                "--cov-report=html:htmlcov_fuzz",
+            ]
+        )
 
     # Filter tests
     if security_only:
@@ -67,7 +71,7 @@ def run_hypothesis_fuzz(
     env = os.environ.copy()
     env["HYPOTHESIS_MAX_EXAMPLES"] = str(max_examples)
 
-    print(f"Running Hypothesis fuzz tests...")
+    print("Running Hypothesis fuzz tests...")
     print(f"  Max examples per test: {max_examples}")
     print(f"  Security only: {security_only}")
     print(f"  Stress only: {stress_only}")
@@ -87,20 +91,20 @@ def run_hypothesis_fuzz(
     print(f"Completed in {elapsed:.1f} seconds")
 
     if with_coverage:
-        print(f"Coverage report: htmlcov_fuzz/index.html")
+        print("Coverage report: htmlcov_fuzz/index.html")
 
     return result.returncode
 
 
 def run_targeted_fuzz(target: str, iterations: int = 10000, verbose: bool = True):
     """Run targeted fuzzing on a specific component."""
-    from hypothesis import given, settings, HealthCheck, Phase
+    from hypothesis import HealthCheck, Phase, given, settings
     from hypothesis import strategies as st
 
     # Import targets from test_fuzz
     from comfy_headless.tests.test_fuzz import (
-        fuzz_prompt_validation,
         fuzz_dimension_validation,
+        fuzz_prompt_validation,
         fuzz_workflow_compilation,
     )
 
@@ -140,7 +144,7 @@ def run_targeted_fuzz(target: str, iterations: int = 10000, verbose: bool = True
         return 1
     finally:
         elapsed = time.time() - start
-        print(f"Completed in {elapsed:.1f} seconds ({iterations/elapsed:.0f} iter/sec)")
+        print(f"Completed in {elapsed:.1f} seconds ({iterations / elapsed:.0f} iter/sec)")
 
     return 0
 
@@ -152,13 +156,15 @@ def main():
         epilog=__doc__,
     )
     parser.add_argument(
-        "--examples", "-n",
+        "--examples",
+        "-n",
         type=int,
         default=1000,
         help="Max examples per Hypothesis test (default: 1000)",
     )
     parser.add_argument(
-        "--time", "-t",
+        "--time",
+        "-t",
         type=int,
         default=300,
         help="Max total time in seconds (default: 300)",
@@ -184,7 +190,8 @@ def main():
         help="Run targeted fuzzing on a specific component",
     )
     parser.add_argument(
-        "--quiet", "-q",
+        "--quiet",
+        "-q",
         action="store_true",
         help="Less verbose output",
     )

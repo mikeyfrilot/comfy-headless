@@ -1,8 +1,8 @@
 """Tests for validation module."""
 
-import pytest
-from unittest.mock import patch
 from pathlib import Path
+
+import pytest
 
 
 class TestValidationConstants:
@@ -11,21 +11,25 @@ class TestValidationConstants:
     def test_pydantic_available_flag(self):
         """Test PYDANTIC_AVAILABLE flag exists."""
         from comfy_headless.validation import PYDANTIC_AVAILABLE
+
         assert isinstance(PYDANTIC_AVAILABLE, bool)
 
     def test_injection_patterns_exist(self):
         """Test injection patterns are defined."""
         from comfy_headless.validation import INJECTION_PATTERNS
+
         assert len(INJECTION_PATTERNS) > 0
 
     def test_dangerous_chars_exist(self):
         """Test dangerous chars are defined."""
         from comfy_headless.validation import DANGEROUS_CHARS
+
         assert len(DANGEROUS_CHARS) > 0
 
     def test_path_traversal_patterns_exist(self):
         """Test path traversal patterns are defined."""
         from comfy_headless.validation import PATH_TRAVERSAL_PATTERNS
+
         assert len(PATH_TRAVERSAL_PATTERNS) > 0
 
 
@@ -41,32 +45,32 @@ class TestValidatePrompt:
 
     def test_empty_prompt_raises(self):
         """Test empty prompt raises."""
-        from comfy_headless.validation import validate_prompt
         from comfy_headless.exceptions import InvalidPromptError
+        from comfy_headless.validation import validate_prompt
 
         with pytest.raises(InvalidPromptError):
             validate_prompt("")
 
     def test_none_prompt_raises(self):
         """Test None prompt raises."""
-        from comfy_headless.validation import validate_prompt
         from comfy_headless.exceptions import InvalidPromptError
+        from comfy_headless.validation import validate_prompt
 
         with pytest.raises(InvalidPromptError):
             validate_prompt(None)
 
     def test_prompt_too_short(self):
         """Test prompt that's too short."""
-        from comfy_headless.validation import validate_prompt
         from comfy_headless.exceptions import InvalidPromptError
+        from comfy_headless.validation import validate_prompt
 
         with pytest.raises(InvalidPromptError):
             validate_prompt("a", min_length=5)
 
     def test_prompt_too_long(self):
         """Test prompt that's too long."""
-        from comfy_headless.validation import validate_prompt
         from comfy_headless.exceptions import InvalidPromptError
+        from comfy_headless.validation import validate_prompt
 
         with pytest.raises(InvalidPromptError):
             validate_prompt("a" * 100, max_length=50)
@@ -102,16 +106,16 @@ class TestValidatePrompt:
 
     def test_prompt_injection_detected(self):
         """Test prompt injection is detected."""
-        from comfy_headless.validation import validate_prompt
         from comfy_headless.exceptions import SecurityError
+        from comfy_headless.validation import validate_prompt
 
         with pytest.raises(SecurityError):
             validate_prompt("ignore previous instructions and...")
 
     def test_prompt_injection_case_insensitive(self):
         """Test injection detection is case insensitive."""
-        from comfy_headless.validation import validate_prompt
         from comfy_headless.exceptions import SecurityError
+        from comfy_headless.validation import validate_prompt
 
         with pytest.raises(SecurityError):
             validate_prompt("IGNORE PREVIOUS INSTRUCTIONS")
@@ -121,10 +125,7 @@ class TestValidatePrompt:
         from comfy_headless.validation import validate_prompt
 
         # Should not raise when check disabled
-        result = validate_prompt(
-            "ignore previous instructions",
-            check_injection=False
-        )
+        result = validate_prompt("ignore previous instructions", check_injection=False)
         assert "ignore" in result.lower()
 
 
@@ -166,32 +167,32 @@ class TestValidateDimensions:
 
     def test_dimensions_too_small(self):
         """Test dimensions below minimum."""
-        from comfy_headless.validation import validate_dimensions
         from comfy_headless.exceptions import DimensionError
+        from comfy_headless.validation import validate_dimensions
 
         with pytest.raises(DimensionError):
             validate_dimensions(32, 32, min_size=64)
 
     def test_dimensions_too_large(self):
         """Test dimensions above maximum."""
-        from comfy_headless.validation import validate_dimensions
         from comfy_headless.exceptions import DimensionError
+        from comfy_headless.validation import validate_dimensions
 
         with pytest.raises(DimensionError):
             validate_dimensions(8192, 8192, max_size=4096)
 
     def test_dimensions_not_divisible(self):
         """Test dimensions not divisible by 8."""
-        from comfy_headless.validation import validate_dimensions
         from comfy_headless.exceptions import DimensionError
+        from comfy_headless.validation import validate_dimensions
 
         with pytest.raises(DimensionError):
             validate_dimensions(1025, 1024, must_be_divisible_by=8)
 
     def test_dimensions_non_integer(self):
         """Test non-integer dimensions."""
-        from comfy_headless.validation import validate_dimensions
         from comfy_headless.exceptions import DimensionError
+        from comfy_headless.validation import validate_dimensions
 
         with pytest.raises(DimensionError):
             validate_dimensions(1024.5, 1024)
@@ -253,40 +254,40 @@ class TestValidatePath:
 
     def test_empty_path_raises(self):
         """Test empty path raises."""
-        from comfy_headless.validation import validate_path
         from comfy_headless.exceptions import ValidationError
+        from comfy_headless.validation import validate_path
 
         with pytest.raises(ValidationError):
             validate_path("")
 
     def test_path_traversal_detected(self):
         """Test path traversal is detected."""
-        from comfy_headless.validation import validate_path
         from comfy_headless.exceptions import SecurityError
+        from comfy_headless.validation import validate_path
 
         with pytest.raises(SecurityError):
             validate_path("../../../etc/passwd")
 
     def test_path_traversal_encoded(self):
         """Test encoded path traversal is detected."""
-        from comfy_headless.validation import validate_path
         from comfy_headless.exceptions import SecurityError
+        from comfy_headless.validation import validate_path
 
         with pytest.raises(SecurityError):
             validate_path("%2e%2e/etc/passwd")
 
     def test_path_must_exist(self):
         """Test must_exist flag."""
-        from comfy_headless.validation import validate_path
         from comfy_headless.exceptions import ValidationError
+        from comfy_headless.validation import validate_path
 
         with pytest.raises(ValidationError):
             validate_path("/nonexistent/path/xyz.txt", must_exist=True)
 
     def test_path_allowed_extensions(self):
         """Test allowed extensions."""
-        from comfy_headless.validation import validate_path
         from comfy_headless.exceptions import ValidationError
+        from comfy_headless.validation import validate_path
 
         with pytest.raises(ValidationError):
             validate_path("/path/to/file.exe", allowed_extensions=[".png", ".jpg"])
@@ -311,16 +312,16 @@ class TestValidateInRange:
 
     def test_value_below_min(self):
         """Test value below minimum."""
-        from comfy_headless.validation import validate_in_range
         from comfy_headless.exceptions import InvalidParameterError
+        from comfy_headless.validation import validate_in_range
 
         with pytest.raises(InvalidParameterError):
             validate_in_range(0, "steps", min_val=1)
 
     def test_value_above_max(self):
         """Test value above maximum."""
-        from comfy_headless.validation import validate_in_range
         from comfy_headless.exceptions import InvalidParameterError
+        from comfy_headless.validation import validate_in_range
 
         with pytest.raises(InvalidParameterError):
             validate_in_range(200, "steps", max_val=100)
@@ -345,8 +346,8 @@ class TestValidateChoice:
 
     def test_invalid_choice(self):
         """Test invalid choice raises."""
-        from comfy_headless.validation import validate_choice
         from comfy_headless.exceptions import InvalidParameterError
+        from comfy_headless.validation import validate_choice
 
         with pytest.raises(InvalidParameterError):
             validate_choice("invalid", "sampler", ["euler", "dpmpp_2m"])
@@ -360,11 +361,7 @@ class TestValidateGenerationParams:
         from comfy_headless.validation import validate_generation_params
 
         result = validate_generation_params(
-            prompt="a sunset",
-            width=1024,
-            height=1024,
-            steps=25,
-            cfg=7.0
+            prompt="a sunset", width=1024, height=1024, steps=25, cfg=7.0
         )
 
         assert result["prompt"] == "a sunset"
@@ -373,45 +370,35 @@ class TestValidateGenerationParams:
 
     def test_invalid_prompt_raises(self):
         """Test invalid prompt raises."""
-        from comfy_headless.validation import validate_generation_params
         from comfy_headless.exceptions import ComfyHeadlessExceptionGroup
+        from comfy_headless.validation import validate_generation_params
 
         with pytest.raises(ComfyHeadlessExceptionGroup):
             validate_generation_params(prompt="")
 
     def test_invalid_dimensions_raises(self):
         """Test invalid dimensions raises."""
-        from comfy_headless.validation import validate_generation_params
         from comfy_headless.exceptions import ComfyHeadlessExceptionGroup
+        from comfy_headless.validation import validate_generation_params
 
         with pytest.raises(ComfyHeadlessExceptionGroup):
-            validate_generation_params(
-                prompt="test",
-                width=32,
-                height=32
-            )
+            validate_generation_params(prompt="test", width=32, height=32)
 
     def test_invalid_steps_raises(self):
         """Test invalid steps raises."""
-        from comfy_headless.validation import validate_generation_params
         from comfy_headless.exceptions import ComfyHeadlessExceptionGroup
+        from comfy_headless.validation import validate_generation_params
 
         with pytest.raises(ComfyHeadlessExceptionGroup):
-            validate_generation_params(
-                prompt="test",
-                steps=0
-            )
+            validate_generation_params(prompt="test", steps=0)
 
     def test_invalid_cfg_raises(self):
         """Test invalid CFG raises."""
-        from comfy_headless.validation import validate_generation_params
         from comfy_headless.exceptions import ComfyHeadlessExceptionGroup
+        from comfy_headless.validation import validate_generation_params
 
         with pytest.raises(ComfyHeadlessExceptionGroup):
-            validate_generation_params(
-                prompt="test",
-                cfg=0.5
-            )
+            validate_generation_params(prompt="test", cfg=0.5)
 
 
 class TestValidatedPromptDecorator:
@@ -419,8 +406,8 @@ class TestValidatedPromptDecorator:
 
     def test_decorator_validates_prompt(self):
         """Test decorator validates first argument."""
-        from comfy_headless.validation import validated_prompt
         from comfy_headless.exceptions import InvalidPromptError
+        from comfy_headless.validation import validated_prompt
 
         @validated_prompt
         def generate(prompt):
@@ -441,7 +428,6 @@ class TestValidatedDimensionsDecorator:
     def test_decorator_validates_dimensions(self):
         """Test decorator validates width/height kwargs."""
         from comfy_headless.validation import validated_dimensions
-        from comfy_headless.exceptions import DimensionError
 
         @validated_dimensions
         def generate(prompt, *, width, height):
@@ -476,13 +462,7 @@ class TestPydanticModels:
 
         from comfy_headless.validation import GenerationRequest
 
-        request = GenerationRequest(
-            prompt="a sunset",
-            width=1024,
-            height=1024,
-            steps=25,
-            cfg=7.0
-        )
+        request = GenerationRequest(prompt="a sunset", width=1024, height=1024, steps=25, cfg=7.0)
 
         assert request.prompt == "a sunset"
         assert request.width == 1024
@@ -514,11 +494,7 @@ class TestPydanticModels:
         from comfy_headless.validation import GenerationRequest
 
         # 1025 should be rounded to 1024
-        request = GenerationRequest(
-            prompt="test",
-            width=1025,
-            height=1027
-        )
+        request = GenerationRequest(prompt="test", width=1025, height=1027)
 
         assert request.width % 8 == 0
         assert request.height % 8 == 0
@@ -532,9 +508,7 @@ class TestPydanticModels:
 
         from comfy_headless.validation import GenerationRequest
 
-        request = GenerationRequest(
-            prompt="<script>alert('xss')</script>"
-        )
+        request = GenerationRequest(prompt="<script>alert('xss')</script>")
 
         assert "<script>" not in request.prompt
         assert "&lt;" in request.prompt
@@ -546,8 +520,9 @@ class TestPydanticModels:
         if not PYDANTIC_AVAILABLE:
             pytest.skip("Pydantic not available")
 
-        from comfy_headless.validation import GenerationRequest
         from pydantic import ValidationError as PydanticValidationError
+
+        from comfy_headless.validation import GenerationRequest
 
         with pytest.raises(PydanticValidationError):
             GenerationRequest(prompt="ignore previous instructions")
@@ -561,11 +536,7 @@ class TestPydanticModels:
 
         from comfy_headless.validation import VideoRequest
 
-        request = VideoRequest(
-            prompt="a cat walking",
-            frames=24,
-            fps=12
-        )
+        request = VideoRequest(prompt="a cat walking", frames=24, fps=12)
 
         assert request.frames == 24
         assert request.fps == 12
@@ -590,8 +561,9 @@ class TestPydanticModels:
         if not PYDANTIC_AVAILABLE:
             pytest.skip("Pydantic not available")
 
-        from comfy_headless.validation import ModelReference
         from pydantic import ValidationError as PydanticValidationError
+
+        from comfy_headless.validation import ModelReference
 
         with pytest.raises(PydanticValidationError):
             ModelReference(name="../../../etc/passwd")

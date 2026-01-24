@@ -9,9 +9,10 @@ Covers:
 - All exception to_dict() methods
 """
 
-import pytest
 import os
 from unittest.mock import patch
+
+import pytest
 
 
 class TestErrorLevelEnum:
@@ -45,7 +46,7 @@ class TestSetGetVerbosity:
 
     def test_default_verbosity(self):
         """Default verbosity is CASUAL."""
-        from comfy_headless.exceptions import get_verbosity, VerbosityLevel, set_verbosity
+        from comfy_headless.exceptions import VerbosityLevel, get_verbosity, set_verbosity
 
         # Reset to ensure clean state
         set_verbosity(None)
@@ -58,7 +59,7 @@ class TestSetGetVerbosity:
 
     def test_set_verbosity(self):
         """set_verbosity changes the global verbosity."""
-        from comfy_headless.exceptions import set_verbosity, get_verbosity, VerbosityLevel
+        from comfy_headless.exceptions import VerbosityLevel, get_verbosity, set_verbosity
 
         set_verbosity(VerbosityLevel.DEVELOPER)
         assert get_verbosity() == VerbosityLevel.DEVELOPER
@@ -71,7 +72,7 @@ class TestSetGetVerbosity:
 
     def test_verbosity_from_env(self):
         """Verbosity can be set via environment variable."""
-        from comfy_headless.exceptions import _get_verbosity, VerbosityLevel, set_verbosity
+        from comfy_headless.exceptions import VerbosityLevel, _get_verbosity, set_verbosity
 
         set_verbosity(None)  # Clear global setting
 
@@ -161,10 +162,7 @@ class TestErrorMessages:
         from comfy_headless.exceptions import ComfyHeadlessError
 
         error = ComfyHeadlessError(
-            "Technical error",
-            code="ERR_001",
-            details={"extra": "info"},
-            request_id="req-123"
+            "Technical error", code="ERR_001", details={"extra": "info"}, request_id="req-123"
         )
 
         dev_msg = error.developer_message
@@ -176,11 +174,7 @@ class TestErrorMessages:
         """get_message respects verbosity level."""
         from comfy_headless.exceptions import ComfyHeadlessError, VerbosityLevel
 
-        error = ComfyHeadlessError(
-            "Technical",
-            user_message="User friendly",
-            eli5_message="Simple"
-        )
+        error = ComfyHeadlessError("Technical", user_message="User friendly", eli5_message="Simple")
 
         assert error.get_message(VerbosityLevel.ELI5) == "Simple"
         assert error.get_message(VerbosityLevel.CASUAL) == "User friendly"
@@ -408,7 +402,7 @@ class TestResult:
 
     def test_result_failure(self):
         """Result.failure creates failed result."""
-        from comfy_headless.exceptions import Result, ComfyHeadlessError
+        from comfy_headless.exceptions import ComfyHeadlessError, Result
 
         error = ComfyHeadlessError("Test error")
         result = Result.failure(error)
@@ -419,7 +413,7 @@ class TestResult:
 
     def test_result_value_raises_on_failure(self):
         """Accessing value on failure raises."""
-        from comfy_headless.exceptions import Result, ComfyHeadlessError
+        from comfy_headless.exceptions import ComfyHeadlessError, Result
 
         error = ComfyHeadlessError("Error")
         result = Result.failure(error)
@@ -429,7 +423,7 @@ class TestResult:
 
     def test_result_value_or(self):
         """value_or returns default on failure."""
-        from comfy_headless.exceptions import Result, ComfyHeadlessError
+        from comfy_headless.exceptions import ComfyHeadlessError, Result
 
         result = Result.failure(ComfyHeadlessError("Error"))
 
@@ -454,7 +448,7 @@ class TestResult:
 
     def test_result_map_on_failure(self):
         """Result.map returns same failure."""
-        from comfy_headless.exceptions import Result, ComfyHeadlessError
+        from comfy_headless.exceptions import ComfyHeadlessError, Result
 
         error = ComfyHeadlessError("Error")
         result = Result.failure(error)
@@ -474,7 +468,7 @@ class TestResult:
 
     def test_result_on_error(self):
         """Result.on_error calls callback on failure."""
-        from comfy_headless.exceptions import Result, ComfyHeadlessError
+        from comfy_headless.exceptions import ComfyHeadlessError, Result
 
         errors = []
         error = ComfyHeadlessError("Error")
@@ -516,7 +510,7 @@ class TestResult:
 
     def test_result_from_exception_catches_error(self):
         """Result.from_exception catches exceptions."""
-        from comfy_headless.exceptions import Result, ComfyHeadlessError
+        from comfy_headless.exceptions import ComfyHeadlessError, Result
 
         def failing():
             raise ComfyHeadlessError("Failed")
@@ -530,7 +524,7 @@ class TestResult:
         from comfy_headless.exceptions import Result
 
         success = Result.success("value")
-        failure = Result.failure(None)
+        Result.failure(None)
 
         assert "success" in repr(success)
 
@@ -540,12 +534,13 @@ class TestExceptionGroups:
 
     def test_exception_group_creation(self):
         """ExceptionGroup can be created."""
-        from comfy_headless.exceptions import ComfyHeadlessExceptionGroup, InvalidPromptError, ValidationError
+        from comfy_headless.exceptions import (
+            ComfyHeadlessExceptionGroup,
+            InvalidPromptError,
+            ValidationError,
+        )
 
-        errors = [
-            InvalidPromptError("Empty"),
-            ValidationError("Invalid")
-        ]
+        errors = [InvalidPromptError("Empty"), ValidationError("Invalid")]
 
         group = ComfyHeadlessExceptionGroup("Multiple errors", errors)
 
@@ -577,7 +572,11 @@ class TestFormatErrorForUser:
 
     def test_format_comfy_error(self):
         """format_error_for_user handles ComfyHeadlessError."""
-        from comfy_headless.exceptions import format_error_for_user, ComfyHeadlessError, VerbosityLevel
+        from comfy_headless.exceptions import (
+            ComfyHeadlessError,
+            VerbosityLevel,
+            format_error_for_user,
+        )
 
         error = ComfyHeadlessError("Technical", user_message="User friendly")
 
@@ -586,7 +585,7 @@ class TestFormatErrorForUser:
 
     def test_format_generic_error_eli5(self):
         """format_error_for_user handles generic error at ELI5."""
-        from comfy_headless.exceptions import format_error_for_user, VerbosityLevel
+        from comfy_headless.exceptions import VerbosityLevel, format_error_for_user
 
         error = ValueError("Some error")
 
@@ -595,7 +594,7 @@ class TestFormatErrorForUser:
 
     def test_format_generic_error_casual(self):
         """format_error_for_user handles generic error at CASUAL."""
-        from comfy_headless.exceptions import format_error_for_user, VerbosityLevel
+        from comfy_headless.exceptions import VerbosityLevel, format_error_for_user
 
         error = ValueError("Some error")
 
@@ -604,7 +603,7 @@ class TestFormatErrorForUser:
 
     def test_format_generic_error_developer(self):
         """format_error_for_user handles generic error at DEVELOPER."""
-        from comfy_headless.exceptions import format_error_for_user, VerbosityLevel
+        from comfy_headless.exceptions import VerbosityLevel, format_error_for_user
 
         error = ValueError("Some error")
 
@@ -621,14 +620,28 @@ class TestAllExports:
         from comfy_headless import exceptions
 
         expected = [
-            "ErrorLevel", "VerbosityLevel", "set_verbosity", "get_verbosity",
-            "Result", "ComfyHeadlessError",
-            "ComfyUIConnectionError", "ComfyUIOfflineError", "OllamaConnectionError",
-            "QueueError", "GenerationTimeoutError", "GenerationFailedError",
-            "WorkflowCompilationError", "TemplateNotFoundError",
-            "RetryExhaustedError", "CircuitOpenError",
-            "ValidationError", "InvalidPromptError", "InvalidParameterError", "SecurityError",
-            "ComfyHeadlessExceptionGroup", "format_error_for_user",
+            "ErrorLevel",
+            "VerbosityLevel",
+            "set_verbosity",
+            "get_verbosity",
+            "Result",
+            "ComfyHeadlessError",
+            "ComfyUIConnectionError",
+            "ComfyUIOfflineError",
+            "OllamaConnectionError",
+            "QueueError",
+            "GenerationTimeoutError",
+            "GenerationFailedError",
+            "WorkflowCompilationError",
+            "TemplateNotFoundError",
+            "RetryExhaustedError",
+            "CircuitOpenError",
+            "ValidationError",
+            "InvalidPromptError",
+            "InvalidParameterError",
+            "SecurityError",
+            "ComfyHeadlessExceptionGroup",
+            "format_error_for_user",
         ]
 
         for name in expected:

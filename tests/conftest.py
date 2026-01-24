@@ -1,13 +1,15 @@
 """Pytest configuration and fixtures."""
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 
 @pytest.fixture
 def mock_settings():
     """Provide mock settings for tests."""
     from comfy_headless.config import Settings
+
     return Settings()
 
 

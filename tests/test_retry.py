@@ -1,7 +1,8 @@
 """Tests for retry module."""
 
-import pytest
 import time
+
+import pytest
 
 
 class TestRetryWithBackoff:
@@ -43,8 +44,8 @@ class TestRetryWithBackoff:
 
     def test_exhausts_retries(self):
         """Test retry exhaustion."""
-        from comfy_headless.retry import retry_with_backoff
         from comfy_headless.exceptions import RetryExhaustedError
+        from comfy_headless.retry import retry_with_backoff
 
         @retry_with_backoff(max_attempts=2, backoff_base=0.01)
         def always_fails():
@@ -79,22 +80,23 @@ class TestCircuitBreaker:
 
     def test_circuit_rejects_when_open(self):
         """Test circuit rejects calls when open."""
-        from comfy_headless.retry import CircuitBreaker, CircuitState
         from comfy_headless.exceptions import CircuitOpenError
+        from comfy_headless.retry import CircuitBreaker
 
         breaker = CircuitBreaker(name="test", failure_threshold=1)
         breaker.record_failure()
 
-        with pytest.raises(CircuitOpenError):
-            with breaker:
-                pass
+        with pytest.raises(CircuitOpenError), breaker:
+            pass
 
     def test_circuit_resets_on_success(self):
         """Test circuit resets after success in half-open."""
         from comfy_headless.retry import CircuitBreaker, CircuitState
 
         # success_threshold=1 so one success is enough to close
-        breaker = CircuitBreaker(name="test", failure_threshold=1, reset_timeout=0.01, success_threshold=1)
+        breaker = CircuitBreaker(
+            name="test", failure_threshold=1, reset_timeout=0.01, success_threshold=1
+        )
 
         # Open the circuit
         breaker.record_failure()

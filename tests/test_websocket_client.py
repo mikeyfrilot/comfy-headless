@@ -1,8 +1,9 @@
 """Tests for websocket_client module."""
 
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 import json
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 
 class TestWebSocketImports:
@@ -11,15 +12,16 @@ class TestWebSocketImports:
     def test_websockets_available_flag(self):
         """Test WEBSOCKETS_AVAILABLE flag exists."""
         from comfy_headless.websocket_client import WEBSOCKETS_AVAILABLE
+
         assert isinstance(WEBSOCKETS_AVAILABLE, bool)
 
     def test_exports(self):
         """Test expected exports are available."""
         from comfy_headless import websocket_client
 
-        assert hasattr(websocket_client, 'ComfyWSClient')
-        assert hasattr(websocket_client, 'WSProgress')
-        assert hasattr(websocket_client, 'WSMessageType')
+        assert hasattr(websocket_client, "ComfyWSClient")
+        assert hasattr(websocket_client, "WSProgress")
+        assert hasattr(websocket_client, "WSMessageType")
 
 
 class TestWSMessageType:
@@ -47,11 +49,7 @@ class TestWSProgress:
         from comfy_headless.websocket_client import WSProgress
 
         progress = WSProgress(
-            prompt_id="test123",
-            node_id="1",
-            progress=0.5,
-            max_progress=1.0,
-            status="progress"
+            prompt_id="test123", node_id="1", progress=0.5, max_progress=1.0, status="progress"
         )
 
         assert progress.prompt_id == "test123"
@@ -62,44 +60,28 @@ class TestWSProgress:
         """Test percent property."""
         from comfy_headless.websocket_client import WSProgress
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=0.5,
-            max_progress=1.0
-        )
+        progress = WSProgress(prompt_id="test", progress=0.5, max_progress=1.0)
         assert progress.percent == 50.0
 
     def test_progress_percent_zero_max(self):
         """Test percent with zero max."""
         from comfy_headless.websocket_client import WSProgress
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=0.5,
-            max_progress=0.0
-        )
+        progress = WSProgress(prompt_id="test", progress=0.5, max_progress=0.0)
         assert progress.percent == 0.0
 
     def test_progress_normalized(self):
         """Test normalized property."""
         from comfy_headless.websocket_client import WSProgress
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=7,
-            max_progress=10
-        )
+        progress = WSProgress(prompt_id="test", progress=7, max_progress=10)
         assert progress.normalized == 0.7
 
     def test_progress_normalized_zero_max(self):
         """Test normalized with zero max."""
         from comfy_headless.websocket_client import WSProgress
 
-        progress = WSProgress(
-            prompt_id="test",
-            progress=5,
-            max_progress=0
-        )
+        progress = WSProgress(prompt_id="test", progress=5, max_progress=0)
         assert progress.normalized == 0.0
 
     def test_progress_defaults(self):
@@ -124,14 +106,15 @@ class TestComfyWSClientInit:
     @pytest.fixture
     def mock_websockets(self):
         """Mock websockets module."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             yield
 
     def test_init_with_http_url(self, mock_websockets):
         """Test initialization with HTTP URL."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
+
                 client = ComfyWSClient(base_url="http://localhost:8188")
                 assert "ws://" in client.ws_url
                 assert "/ws" in client.ws_url
@@ -140,9 +123,10 @@ class TestComfyWSClientInit:
 
     def test_init_with_https_url(self, mock_websockets):
         """Test initialization with HTTPS URL."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
+
                 client = ComfyWSClient(base_url="https://example.com:8188")
                 assert "wss://" in client.ws_url
             except ImportError:
@@ -150,9 +134,10 @@ class TestComfyWSClientInit:
 
     def test_init_with_custom_client_id(self, mock_websockets):
         """Test initialization with custom client ID."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
+
                 client = ComfyWSClient(client_id="my-custom-id")
                 assert client.client_id == "my-custom-id"
             except ImportError:
@@ -160,9 +145,10 @@ class TestComfyWSClientInit:
 
     def test_init_generates_client_id(self, mock_websockets):
         """Test initialization generates client ID."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
+
                 client = ComfyWSClient()
                 assert client.client_id is not None
                 assert len(client.client_id) > 0
@@ -171,13 +157,11 @@ class TestComfyWSClientInit:
 
     def test_init_reconnect_settings(self, mock_websockets):
         """Test reconnect settings."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
-                client = ComfyWSClient(
-                    reconnect_attempts=5,
-                    reconnect_delay=2.0
-                )
+
+                client = ComfyWSClient(reconnect_attempts=5, reconnect_delay=2.0)
                 assert client.reconnect_attempts == 5
                 assert client.reconnect_delay == 2.0
             except ImportError:
@@ -185,10 +169,12 @@ class TestComfyWSClientInit:
 
     def test_init_raises_without_websockets(self):
         """Test ImportError raised when websockets not available."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', False):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", False):
             # Reload module to pick up the patched value
             import importlib
+
             from comfy_headless import websocket_client
+
             importlib.reload(websocket_client)
 
             # The ComfyWSClient should raise ImportError
@@ -202,9 +188,10 @@ class TestComfyWSClientProperties:
 
     def test_connected_property_false_when_no_ws(self):
         """Test connected is False when no websocket."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
+
                 client = ComfyWSClient()
                 assert client.connected is False
             except ImportError:
@@ -216,7 +203,7 @@ class TestComfyWSClientListeners:
 
     def test_add_listener(self):
         """Test adding a listener."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
@@ -233,7 +220,7 @@ class TestComfyWSClientListeners:
 
     def test_remove_listener(self):
         """Test removing a listener."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
@@ -251,7 +238,7 @@ class TestComfyWSClientListeners:
 
     def test_add_multiple_listeners(self):
         """Test adding multiple listeners."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
@@ -277,7 +264,7 @@ class TestComfyWSClientMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_binary_message(self):
         """Test handling binary preview message."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
@@ -287,7 +274,7 @@ class TestComfyWSClientMessageHandling:
                 client._notify_listeners = AsyncMock()
 
                 # Binary message with header + data
-                binary_data = b'\x00' * 8 + b'\x89PNG\r\n\x1a\n'
+                binary_data = b"\x00" * 8 + b"\x89PNG\r\n\x1a\n"
 
                 await client._handle_message(binary_data)
 
@@ -301,19 +288,16 @@ class TestComfyWSClientMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_status_message(self):
         """Test handling status message."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
                 client = ComfyWSClient()
                 client._notify_listeners = AsyncMock()
 
-                message = json.dumps({
-                    "type": "status",
-                    "data": {
-                        "status": {"exec_info": {"queue_remaining": 5}}
-                    }
-                })
+                message = json.dumps(
+                    {"type": "status", "data": {"status": {"exec_info": {"queue_remaining": 5}}}}
+                )
 
                 await client._handle_message(message)
                 # Status messages are logged but don't notify
@@ -323,17 +307,14 @@ class TestComfyWSClientMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_execution_start_message(self):
         """Test handling execution_start message."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
                 client = ComfyWSClient()
                 client._notify_listeners = AsyncMock()
 
-                message = json.dumps({
-                    "type": "execution_start",
-                    "data": {"prompt_id": "abc123"}
-                })
+                message = json.dumps({"type": "execution_start", "data": {"prompt_id": "abc123"}})
 
                 await client._handle_message(message)
 
@@ -347,22 +328,19 @@ class TestComfyWSClientMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_progress_message(self):
         """Test handling progress message."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
                 client = ComfyWSClient()
                 client._notify_listeners = AsyncMock()
 
-                message = json.dumps({
-                    "type": "progress",
-                    "data": {
-                        "prompt_id": "abc123",
-                        "node": "3",
-                        "value": 5,
-                        "max": 10
+                message = json.dumps(
+                    {
+                        "type": "progress",
+                        "data": {"prompt_id": "abc123", "node": "3", "value": 5, "max": 10},
                     }
-                })
+                )
 
                 await client._handle_message(message)
 
@@ -377,17 +355,16 @@ class TestComfyWSClientMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_executing_complete(self):
         """Test handling executing message with None node (complete)."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
                 client = ComfyWSClient()
                 client._notify_listeners = AsyncMock()
 
-                message = json.dumps({
-                    "type": "executing",
-                    "data": {"prompt_id": "abc123", "node": None}
-                })
+                message = json.dumps(
+                    {"type": "executing", "data": {"prompt_id": "abc123", "node": None}}
+                )
 
                 await client._handle_message(message)
 
@@ -401,17 +378,14 @@ class TestComfyWSClientMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_execution_error(self):
         """Test handling execution_error message."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
                 client = ComfyWSClient()
                 client._notify_listeners = AsyncMock()
 
-                message = json.dumps({
-                    "type": "execution_error",
-                    "data": {"prompt_id": "abc123"}
-                })
+                message = json.dumps({"type": "execution_error", "data": {"prompt_id": "abc123"}})
 
                 await client._handle_message(message)
 
@@ -425,7 +399,7 @@ class TestComfyWSClientMessageHandling:
     @pytest.mark.asyncio
     async def test_handle_invalid_json(self):
         """Test handling invalid JSON message."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient
 
@@ -444,7 +418,7 @@ class TestComfyWSClientNotifyListeners:
     @pytest.mark.asyncio
     async def test_notify_listeners_calls_callbacks(self):
         """Test notify_listeners calls all callbacks."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient, WSProgress
 
@@ -468,7 +442,7 @@ class TestComfyWSClientNotifyListeners:
     @pytest.mark.asyncio
     async def test_notify_global_listeners(self):
         """Test global listeners (empty prompt_id) are notified."""
-        with patch('comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE', True):
+        with patch("comfy_headless.websocket_client.WEBSOCKETS_AVAILABLE", True):
             try:
                 from comfy_headless.websocket_client import ComfyWSClient, WSProgress
 

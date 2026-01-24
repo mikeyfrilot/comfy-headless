@@ -8,30 +8,27 @@ Features:
 - 2026 Design Best Practices (Warm Neutral + Emerald themes)
 """
 
-import gradio as gr
-import time
 import random
 import tempfile
-from typing import Optional, List
+import time
+
+import gradio as gr
 
 from .client import ComfyClient
-from .workflows import (
-    GENERATION_PRESETS,
-    WorkflowTemplate,
-    WorkflowCategory,
-    ParameterDef,
-    ParameterType,
-    get_library,
-    get_compiler,
-    list_presets,
-    get_preset_info,
-)
+from .config import settings
+from .help_system import format_help_list, get_help, get_help_for_error, list_topics
+from .theme import create_comfy_theme, get_css
 from .video import (
     VIDEO_PRESETS,
 )
-from .theme import create_comfy_theme, get_css
-from .help_system import get_help_for_error, format_help_list, get_help, list_topics
-from .config import settings
+from .workflows import (
+    GENERATION_PRESETS,
+    ParameterDef,
+    ParameterType,
+    WorkflowCategory,
+    WorkflowTemplate,
+    get_library,
+)
 
 # Initialize client
 client = ComfyClient()
@@ -54,7 +51,6 @@ ENHANCEMENT_PROMPTS = {
 Original: {prompt}
 Style: {style}
 Enhanced prompt (just the prompt, no explanation):""",
-
     "Standard": """You are a Stable Diffusion prompt expert. Enhance this prompt with:
 - Specific artistic details (lighting, atmosphere, composition)
 - Technical quality tags (detailed, sharp focus, professional)
@@ -64,7 +60,6 @@ Original: {prompt}
 Style: {style}
 
 Return ONLY the enhanced prompt, nothing else:""",
-
     "Cinematic": """You are a master cinematographer and Stable Diffusion expert. Transform this prompt into a cinematic masterpiece with:
 - Dramatic lighting and atmosphere
 - Professional composition (rule of thirds, leading lines)
@@ -108,7 +103,7 @@ def enhance_prompt_with_ollama(prompt: str, mode: str, style: str) -> tuple[str,
             result = response.json()
             enhanced = result.get("response", "").strip()
             # Clean up any quotes or extra formatting
-            enhanced = enhanced.strip('"\'')
+            enhanced = enhanced.strip("\"'")
             return enhanced, f"Enhanced with {mode} mode"
         else:
             return prompt, f"Ollama error: {response.status_code}"
@@ -118,9 +113,10 @@ def enhance_prompt_with_ollama(prompt: str, mode: str, style: str) -> tuple[str,
     except Exception as e:
         return prompt, f"Error: {str(e)[:50]}"
 
+
 # Cache for online status during UI construction to avoid repeated slow checks
 # This is reset after create_ui() completes
-_cached_online_status: Optional[bool] = None
+_cached_online_status: bool | None = None
 
 
 def _is_online_cached() -> bool:
@@ -137,7 +133,7 @@ def _is_online_cached() -> bool:
     return client.is_online()
 
 
-def format_error_with_suggestions(error_msg: str, error_code: Optional[str] = None) -> str:
+def format_error_with_suggestions(error_msg: str, error_code: str | None = None) -> str:
     """
     Format an error message with helpful suggestions.
 
@@ -153,7 +149,9 @@ def format_error_with_suggestions(error_msg: str, error_code: Optional[str] = No
     # Try to get suggestions from help system
     if error_code:
         help_text = get_help_for_error(error_code)
-        suggestions = [line.strip("- ") for line in help_text.split("\n") if line.strip().startswith("-")][:3]
+        suggestions = [
+            line.strip("- ") for line in help_text.split("\n") if line.strip().startswith("-")
+        ][:3]
 
     # Build message
     if suggestions:
@@ -161,6 +159,7 @@ def format_error_with_suggestions(error_msg: str, error_code: Optional[str] = No
         return f"**Error**: {error_msg}\n\n**Try:**\n{tips}"
 
     return f"**Error**: {error_msg}"
+
 
 # ============================================================================
 # CONSTANTS
@@ -207,6 +206,7 @@ EXAMPLE_PROMPTS = [
 # ============================================================================
 # STATUS FUNCTIONS
 # ============================================================================
+
 
 def get_status() -> str:
     """Get ComfyUI connection status"""
@@ -292,14 +292,14 @@ def get_models_update():
     return gr.update(choices=models, value=models[0] if models else None, interactive=True)
 
 
-def refresh_samplers() -> List[str]:
+def refresh_samplers() -> list[str]:
     """Get available samplers"""
     if not _is_online_cached():
         return ["euler", "euler_ancestral", "dpmpp_2m", "dpmpp_2m_sde", "dpmpp_sde"]
     return client.get_samplers() or ["euler", "euler_ancestral"]
 
 
-def refresh_schedulers() -> List[str]:
+def refresh_schedulers() -> list[str]:
     """Get available schedulers"""
     if not _is_online_cached():
         return ["normal", "karras", "exponential", "sgm_uniform"]
@@ -353,48 +353,35 @@ CUSTOM_NODE_SOURCES = {
     # AnimateDiff
     "ADE_": ("ComfyUI-AnimateDiff-Evolved", "Kosinkadink/ComfyUI-AnimateDiff-Evolved"),
     "AnimateDiff": ("ComfyUI-AnimateDiff-Evolved", "Kosinkadink/ComfyUI-AnimateDiff-Evolved"),
-
     # Impact Pack
     "Impact": ("ComfyUI Impact Pack", "ltdrdata/ComfyUI-Impact-Pack"),
     "SAM": ("ComfyUI Impact Pack", "ltdrdata/ComfyUI-Impact-Pack"),
     "SEGS": ("ComfyUI Impact Pack", "ltdrdata/ComfyUI-Impact-Pack"),
     "Detector": ("ComfyUI Impact Pack", "ltdrdata/ComfyUI-Impact-Pack"),
-
     # ControlNet
     "ControlNet": ("ComfyUI ControlNet Aux", "Fannovel16/comfyui_controlnet_aux"),
     "Aux": ("ComfyUI ControlNet Aux", "Fannovel16/comfyui_controlnet_aux"),
-
     # IPAdapter
     "IPAdapter": ("ComfyUI IPAdapter Plus", "cubiq/ComfyUI_IPAdapter_plus"),
-
     # Video
     "VHS_": ("ComfyUI-VideoHelperSuite", "Kosinkadink/ComfyUI-VideoHelperSuite"),
     "Video": ("ComfyUI-VideoHelperSuite", "Kosinkadink/ComfyUI-VideoHelperSuite"),
-
     # Flux
     "Flux": ("x-flux-comfyui", "XLabs-AI/x-flux-comfyui"),
-
     # CogVideo
     "CogVideo": ("ComfyUI-CogVideoXWrapper", "kijai/ComfyUI-CogVideoXWrapper"),
-
     # Hunyuan
     "Hunyuan": ("ComfyUI-HunyuanVideoWrapper", "kijai/ComfyUI-HunyuanVideoWrapper"),
-
     # LTX Video
     "LTX": ("ComfyUI-LTXVideo", "Lightricks/ComfyUI-LTXVideo"),
-
     # WAN
     "WAN": ("ComfyUI-WAN", "Wan-Video/ComfyUI-WAN"),
-
     # Efficiency nodes
     "Efficient": ("efficiency-nodes-comfyui", "jags111/efficiency-nodes-comfyui"),
-
     # WAS Suite
     "WAS": ("was-node-suite-comfyui", "WASasquatch/was-node-suite-comfyui"),
-
     # ComfyUI Essentials
     "Essentials": ("ComfyUI_essentials", "cubiq/ComfyUI_essentials"),
-
     # Frame Interpolation
     "FILM": ("ComfyUI-Frame-Interpolation", "Fannovel16/ComfyUI-Frame-Interpolation"),
     "RIFE": ("ComfyUI-Frame-Interpolation", "Fannovel16/ComfyUI-Frame-Interpolation"),
@@ -403,7 +390,7 @@ CUSTOM_NODE_SOURCES = {
 
 def _get_node_source_hint(node_type: str) -> str:
     """Get a hint about where a custom node might come from."""
-    for prefix, (pack_name, repo) in CUSTOM_NODE_SOURCES.items():
+    for prefix, (pack_name, _repo) in CUSTOM_NODE_SOURCES.items():
         if prefix in node_type:
             return f"→ likely from **{pack_name}**"
 
@@ -416,7 +403,7 @@ def _get_node_source_hint(node_type: str) -> str:
     return "→ search in ComfyUI Manager"
 
 
-def refresh_motion_models() -> List[str]:
+def refresh_motion_models() -> list[str]:
     """Get available motion models for AnimateDiff"""
     if not _is_online_cached():
         return ["ComfyUI offline - start to load models"]
@@ -435,6 +422,7 @@ def get_motion_models_update():
 # ============================================================================
 # GENERATION FUNCTIONS
 # ============================================================================
+
 
 def apply_preset(preset_name: str):
     """Apply a preset's settings"""
@@ -477,7 +465,7 @@ def generate_image(
     sampler: str,
     scheduler: str,
     seed: int,
-    progress=gr.Progress()
+    progress=gr.Progress(),
 ) -> tuple:
     """Generate an image and return it with metadata"""
 
@@ -503,7 +491,7 @@ def generate_image(
         cfg=float(cfg),
         sampler=sampler,
         scheduler=scheduler,
-        seed=actual_seed
+        seed=actual_seed,
     )
 
     progress(0.2, desc="Queuing prompt...")
@@ -526,12 +514,14 @@ def generate_image(
 
             if status.get("status_str") == "error":
                 error_msg = status.get("messages", [["Unknown error"]])[0]
-                return None, format_error_with_suggestions(f"Generation failed: {error_msg}", "GENERATION_FAILED")
+                return None, format_error_with_suggestions(
+                    f"Generation failed: {error_msg}", "GENERATION_FAILED"
+                )
 
             if status.get("completed", False):
                 # Extract images
                 outputs = entry.get("outputs", {})
-                for node_id, node_output in outputs.items():
+                for _node_id, node_output in outputs.items():
                     if "images" in node_output:
                         for img in node_output["images"]:
                             filename = img.get("filename")
@@ -588,7 +578,7 @@ def generate_video(
     cfg: float,
     motion_scale: float,
     seed: int,
-    progress=gr.Progress()
+    progress=gr.Progress(),
 ) -> tuple:
     """Generate a video and return it with metadata"""
 
@@ -639,12 +629,14 @@ def generate_video(
 
             if status.get("status_str") == "error":
                 error_msg = status.get("messages", [["Unknown error"]])[0]
-                return None, format_error_with_suggestions(f"Generation failed: {error_msg}", "GENERATION_FAILED")
+                return None, format_error_with_suggestions(
+                    f"Generation failed: {error_msg}", "GENERATION_FAILED"
+                )
 
             if status.get("completed", False):
                 # Extract videos (VHS_VideoCombine outputs to 'gifs' key)
                 outputs = entry.get("outputs", {})
-                for node_id, node_output in outputs.items():
+                for _node_id, node_output in outputs.items():
                     if "gifs" in node_output:
                         for vid in node_output["gifs"]:
                             filename = vid.get("filename")
@@ -686,7 +678,8 @@ def generate_video(
 # HISTORY FUNCTIONS
 # ============================================================================
 
-def get_history_list() -> List[List[str]]:
+
+def get_history_list() -> list[list[str]]:
     """Get generation history as table data"""
     if not _is_online_cached():
         return []
@@ -704,13 +697,21 @@ def get_history_list() -> List[List[str]]:
             if "images" in node_output:
                 image_count += len(node_output["images"])
 
-        status_str = "✅" if status.get("completed") else "❌" if status.get("status_str") == "error" else "⏳"
+        status_str = (
+            "✅"
+            if status.get("completed")
+            else "❌"
+            if status.get("status_str") == "error"
+            else "⏳"
+        )
 
-        rows.append([
-            prompt_id[:8] + "...",
-            status_str,
-            str(image_count),
-        ])
+        rows.append(
+            [
+                prompt_id[:8] + "...",
+                status_str,
+                str(image_count),
+            ]
+        )
 
     return rows
 
@@ -718,6 +719,7 @@ def get_history_list() -> List[List[str]]:
 # ============================================================================
 # BUILD UI
 # ============================================================================
+
 
 def create_ui():
     """Create the Gradio interface with 2026 design best practices."""
@@ -729,6 +731,7 @@ def create_ui():
 
     # Cache buster version
     import datetime
+
     _ui_version = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     print(f"UI Version: {_ui_version}")
 
@@ -738,9 +741,10 @@ def create_ui():
     _custom_css = get_css()
 
     with gr.Blocks(title=f"Comfy Headless v{_ui_version}") as app:
-
         # Prompt Studio Sidebar
-        with gr.Sidebar(position="right", open=False, elem_id="prompt-studio-sidebar") as prompt_studio:
+        with gr.Sidebar(
+            position="right", open=False, elem_id="prompt-studio-sidebar"
+        ):
             gr.Markdown("## Prompt Studio")
             gr.Markdown("Enhance your prompts with AI assistance.")
 
@@ -752,7 +756,14 @@ def create_ui():
 
             with gr.Accordion("Style Presets", open=False):
                 style_category = gr.Dropdown(
-                    choices=["Photorealistic", "Artistic", "Anime", "Fantasy", "Sci-Fi", "Abstract"],
+                    choices=[
+                        "Photorealistic",
+                        "Artistic",
+                        "Anime",
+                        "Fantasy",
+                        "Sci-Fi",
+                        "Abstract",
+                    ],
                     value="Photorealistic",
                     label="Style Category",
                 )
@@ -844,9 +855,16 @@ def create_ui():
                 generate_btn.click(
                     generate_image,
                     inputs=[
-                        prompt, negative_prompt, checkpoint,
-                        width, height, steps, cfg,
-                        sampler, scheduler, seed
+                        prompt,
+                        negative_prompt,
+                        checkpoint,
+                        width,
+                        height,
+                        steps,
+                        cfg,
+                        sampler,
+                        scheduler,
+                        seed,
                     ],
                     outputs=[output_image, output_info],
                 )
@@ -892,8 +910,12 @@ def create_ui():
                             )
 
                             with gr.Row():
-                                video_width = gr.Slider(256, 1024, value=512, step=64, label="Width")
-                                video_height = gr.Slider(256, 1024, value=512, step=64, label="Height")
+                                video_width = gr.Slider(
+                                    256, 1024, value=512, step=64, label="Width"
+                                )
+                                video_height = gr.Slider(
+                                    256, 1024, value=512, step=64, label="Height"
+                                )
 
                             with gr.Row():
                                 video_frames = gr.Slider(8, 32, value=16, step=1, label="Frames")
@@ -901,7 +923,9 @@ def create_ui():
 
                             video_steps = gr.Slider(1, 50, value=20, step=1, label="Steps")
                             video_cfg = gr.Slider(1, 15, value=7.0, step=0.5, label="CFG Scale")
-                            video_motion_scale = gr.Slider(0.5, 2.0, value=1.0, step=0.1, label="Motion Scale")
+                            video_motion_scale = gr.Slider(
+                                0.5, 2.0, value=1.0, step=0.1, label="Motion Scale"
+                            )
 
                             video_checkpoint = gr.Dropdown(
                                 choices=refresh_models(),
@@ -915,7 +939,9 @@ def create_ui():
                                 allow_custom_value=True,
                             )
 
-                            video_seed = gr.Number(value=-1, label="Seed (-1 = random)", precision=0)
+                            video_seed = gr.Number(
+                                value=-1, label="Seed (-1 = random)", precision=0
+                            )
 
                         with gr.Row():
                             video_generate_btn = gr.Button(
@@ -944,10 +970,18 @@ def create_ui():
                 video_generate_btn.click(
                     generate_video,
                     inputs=[
-                        video_prompt, video_negative, video_checkpoint,
-                        video_motion_model, video_width, video_height,
-                        video_frames, video_fps, video_steps, video_cfg,
-                        video_motion_scale, video_seed
+                        video_prompt,
+                        video_negative,
+                        video_checkpoint,
+                        video_motion_model,
+                        video_width,
+                        video_height,
+                        video_frames,
+                        video_fps,
+                        video_steps,
+                        video_cfg,
+                        video_motion_scale,
+                        video_seed,
                     ],
                     outputs=[output_video, video_output_info],
                 )
@@ -986,12 +1020,13 @@ def create_ui():
                 # -------------------------------------------------------------
                 with gr.Accordion("🔄 Currently Running", open=True):
                     current_job_info = gr.Markdown(_get_current_job_info())
-                    current_progress = gr.Markdown("")
+                    gr.Markdown("")
 
                 # -------------------------------------------------------------
                 # Pending Queue
                 # -------------------------------------------------------------
                 with gr.Accordion("⏳ Pending Jobs", open=False):
+
                     def get_pending_jobs():
                         """Get pending jobs as table data."""
                         if not _is_online_cached():
@@ -1003,11 +1038,13 @@ def create_ui():
                         rows = []
                         for i, job in enumerate(pending[:10]):  # Max 10
                             prompt_id = job[1] if len(job) > 1 else "unknown"
-                            rows.append([
-                                str(i + 1),
-                                prompt_id[:12] + "..." if len(prompt_id) > 12 else prompt_id,
-                                "Waiting",
-                            ])
+                            rows.append(
+                                [
+                                    str(i + 1),
+                                    prompt_id[:12] + "..." if len(prompt_id) > 12 else prompt_id,
+                                    "Waiting",
+                                ]
+                            )
                         return rows
 
                     pending_table = gr.Dataframe(
@@ -1044,7 +1081,9 @@ def create_ui():
                             if "images" in node_output:
                                 image_count += len(node_output["images"])
                             if "gifs" in node_output or "videos" in node_output:
-                                video_count += len(node_output.get("gifs", [])) + len(node_output.get("videos", []))
+                                video_count += len(node_output.get("gifs", [])) + len(
+                                    node_output.get("videos", [])
+                                )
 
                         # Status with icon
                         if status.get("completed"):
@@ -1063,12 +1102,14 @@ def create_ui():
                         if not output_str:
                             output_str = "—"
 
-                        rows.append([
-                            prompt_id[:10] + "...",
-                            status_str,
-                            output_str,
-                            "View",
-                        ])
+                        rows.append(
+                            [
+                                prompt_id[:10] + "...",
+                                status_str,
+                                output_str,
+                                "View",
+                            ]
+                        )
 
                     return rows if rows else [["(No history yet)", "—", "—", "—"]]
 
@@ -1131,7 +1172,7 @@ def create_ui():
                         full_id = data[evt.index[0]][0]
                         # The ID is truncated, need to find full ID
                         history = client.get_history()
-                        for prompt_id in history.keys():
+                        for prompt_id in history:
                             if prompt_id.startswith(full_id.replace("...", "")):
                                 return prompt_id
                     return ""
@@ -1159,7 +1200,7 @@ def create_ui():
 
                     # Count outputs
                     images = []
-                    for node_id, node_output in outputs.items():
+                    for _node_id, node_output in outputs.items():
                         if "images" in node_output:
                             for img in node_output["images"]:
                                 images.append(img)
@@ -1167,7 +1208,7 @@ def create_ui():
                     details += f"\n**Images Generated:** {len(images)}"
 
                     # Try to extract prompt text
-                    for node_id, node_data in prompt.items():
+                    for _node_id, node_data in prompt.items():
                         if isinstance(node_data, dict):
                             inputs = node_data.get("inputs", {})
                             if "text" in inputs and len(str(inputs["text"])) > 5:
@@ -1178,7 +1219,7 @@ def create_ui():
                     preview_update = gr.update(visible=False)
                     if images:
                         first_img = images[0]
-                        img_path = f"{client.base_url}/view?filename={first_img.get('filename')}&subfolder={first_img.get('subfolder', '')}&type={first_img.get('type', 'output')}"
+                        f"{client.base_url}/view?filename={first_img.get('filename')}&subfolder={first_img.get('subfolder', '')}&type={first_img.get('type', 'output')}"
                         # Note: This would need actual image fetching logic
                         # For now, just show the info
                         details += f"\n\n*Preview: {first_img.get('filename')}*"
@@ -1187,7 +1228,13 @@ def create_ui():
 
                 refresh_queue_btn.click(
                     refresh_all_queue,
-                    outputs=[queue_status_detailed, current_job_info, pending_table, history_table, queue_action_status],
+                    outputs=[
+                        queue_status_detailed,
+                        current_job_info,
+                        pending_table,
+                        history_table,
+                        queue_action_status,
+                    ],
                 )
 
                 clear_queue_btn.click(
@@ -1252,6 +1299,7 @@ def create_ui():
                     # Sub-tab: Browse Workflows
                     # ---------------------------------------------------------
                     with gr.Tab("📚 Browse", id="workflows-browse"):
+
                         def get_workflow_list():
                             """Get list of available workflow templates."""
                             library = get_library()
@@ -1261,7 +1309,9 @@ def create_ui():
                                     t.id,
                                     t.name,
                                     t.category.value,
-                                    t.description[:50] + "..." if len(t.description) > 50 else t.description,
+                                    t.description[:50] + "..."
+                                    if len(t.description) > 50
+                                    else t.description,
                                     f"{t.min_vram_gb}GB",
                                     len(t.parameters),
                                 ]
@@ -1287,7 +1337,9 @@ def create_ui():
                             refresh_workflows_btn = gr.Button("🔄 Refresh", scale=1)
 
                         # Workflow details panel
-                        with gr.Accordion("Workflow Details", open=False) as workflow_details_accordion:
+                        with gr.Accordion(
+                            "Workflow Details", open=False
+                        ):
                             workflow_details = gr.Markdown("*Select a workflow to view details*")
 
                             workflow_params_table = gr.Dataframe(
@@ -1321,23 +1373,30 @@ def create_ui():
 **Category:** {template.category.value}
 **Description:** {template.description}
 **Minimum VRAM:** {template.min_vram_gb} GB
-**Tags:** {', '.join(template.tags) if template.tags else 'None'}
+**Tags:** {", ".join(template.tags) if template.tags else "None"}
 
 **Presets Available:** {len(template.presets)}
 """
                             if template.presets:
-                                details += "\n" + "\n".join([f"- `{k}`: {v.description}" for k, v in template.presets.items()])
+                                details += "\n" + "\n".join(
+                                    [
+                                        f"- `{k}`: {v.description}"
+                                        for k, v in template.presets.items()
+                                    ]
+                                )
 
                             # Build params table
                             params_data = []
                             for name, param in template.parameters.items():
-                                params_data.append([
-                                    name,
-                                    param.type.value,
-                                    "✓" if param.required else "",
-                                    str(param.default) if param.default is not None else "—",
-                                    param.description or param.label or "—",
-                                ])
+                                params_data.append(
+                                    [
+                                        name,
+                                        param.type.value,
+                                        "✓" if param.required else "",
+                                        str(param.default) if param.default is not None else "—",
+                                        param.description or param.label or "—",
+                                    ]
+                                )
 
                             return details, params_data
 
@@ -1377,7 +1436,7 @@ def create_ui():
                                 for name, info in GENERATION_PRESETS.items()
                             ]
 
-                        presets_table = gr.Dataframe(
+                        gr.Dataframe(
                             headers=["Preset", "Description", "Resolution", "Steps", "CFG"],
                             value=get_presets_data(),
                             label="",
@@ -1406,12 +1465,14 @@ def create_ui():
                                     str(preset.frames),
                                     str(preset.fps),
                                     str(preset.steps),
-                                    preset.model.value if hasattr(preset.model, 'value') else str(preset.model),
+                                    preset.model.value
+                                    if hasattr(preset.model, "value")
+                                    else str(preset.model),
                                 ]
                                 for name, preset in VIDEO_PRESETS.items()
                             ]
 
-                        video_presets_table = gr.Dataframe(
+                        gr.Dataframe(
                             headers=["Preset", "Resolution", "Frames", "FPS", "Steps", "Model"],
                             value=get_video_presets_data(),
                             label="",
@@ -1423,7 +1484,9 @@ def create_ui():
                     # ---------------------------------------------------------
                     with gr.Tab("📥 Import", id="workflows-import"):
                         gr.Markdown("**Import a ComfyUI Workflow**")
-                        gr.Markdown("*Paste a workflow JSON exported from ComfyUI to register it as a template*")
+                        gr.Markdown(
+                            "*Paste a workflow JSON exported from ComfyUI to register it as a template*"
+                        )
 
                         with gr.Row():
                             import_workflow_name = gr.Textbox(
@@ -1444,7 +1507,9 @@ def create_ui():
                             lines=2,
                         )
 
-                        gr.Markdown("*Paste your ComfyUI workflow JSON below (exported from ComfyUI API format)*")
+                        gr.Markdown(
+                            "*Paste your ComfyUI workflow JSON below (exported from ComfyUI API format)*"
+                        )
                         import_workflow_json = gr.Code(
                             label="Workflow JSON",
                             language="json",
@@ -1452,19 +1517,24 @@ def create_ui():
                         )
 
                         with gr.Row():
-                            import_workflow_btn = gr.Button("📥 Import Workflow", variant="primary", scale=2)
+                            import_workflow_btn = gr.Button(
+                                "📥 Import Workflow", variant="primary", scale=2
+                            )
                             validate_workflow_btn = gr.Button("✅ Validate Only", scale=1)
                             check_deps_btn = gr.Button("🔍 Check Dependencies", scale=1)
 
                         import_status = gr.Markdown("")
 
                         # Dependency details accordion (hidden by default)
-                        with gr.Accordion("📦 Dependency Details", open=False) as deps_accordion:
-                            deps_status = gr.Markdown("*Click 'Check Dependencies' to analyze the workflow*")
+                        with gr.Accordion("📦 Dependency Details", open=False):
+                            deps_status = gr.Markdown(
+                                "*Click 'Check Dependencies' to analyze the workflow*"
+                            )
 
                         def validate_workflow_json(json_str: str):
                             """Validate workflow JSON."""
                             import json as json_module
+
                             try:
                                 if not json_str.strip():
                                     return "⚠️ Please paste a workflow JSON"
@@ -1481,7 +1551,7 @@ def create_ui():
 
                                 # Check for common node types
                                 class_types = set()
-                                for node_id, node in workflow.items():
+                                for _node_id, node in workflow.items():
                                     if isinstance(node, dict) and "class_type" in node:
                                         class_types.add(node["class_type"])
 
@@ -1533,10 +1603,14 @@ def create_ui():
 
                                 if deps["all_installed"]:
                                     lines.append("## ✅ All Dependencies Installed!")
-                                    lines.append(f"This workflow uses **{deps['unique_types']}** node types, all of which are installed.")
+                                    lines.append(
+                                        f"This workflow uses **{deps['unique_types']}** node types, all of which are installed."
+                                    )
                                 else:
                                     lines.append("## ⚠️ Missing Dependencies")
-                                    lines.append(f"This workflow requires **{len(deps['missing'])}** custom node(s) that are not installed:")
+                                    lines.append(
+                                        f"This workflow requires **{len(deps['missing'])}** custom node(s) that are not installed:"
+                                    )
                                     lines.append("")
 
                                     for node_type in deps["missing"]:
@@ -1546,17 +1620,23 @@ def create_ui():
 
                                     lines.append("")
                                     lines.append("### How to install missing nodes:")
-                                    lines.append("1. Open **ComfyUI Manager** (press 'M' in ComfyUI)")
+                                    lines.append(
+                                        "1. Open **ComfyUI Manager** (press 'M' in ComfyUI)"
+                                    )
                                     lines.append("2. Search for the missing node name")
                                     lines.append("3. Click **Install** and restart ComfyUI")
 
                                 lines.append("")
                                 lines.append("---")
-                                lines.append(f"**Summary:** {len(deps['installed'])} installed, {len(deps['missing'])} missing, {deps['total_nodes']} total nodes")
+                                lines.append(
+                                    f"**Summary:** {len(deps['installed'])} installed, {len(deps['missing'])} missing, {deps['total_nodes']} total nodes"
+                                )
 
                                 if deps["installed"]:
                                     lines.append("")
-                                    lines.append("<details><summary>Installed nodes (click to expand)</summary>")
+                                    lines.append(
+                                        "<details><summary>Installed nodes (click to expand)</summary>"
+                                    )
                                     lines.append("")
                                     for node_type in deps["installed"]:
                                         lines.append(f"- ✓ {node_type}")
@@ -1569,7 +1649,9 @@ def create_ui():
                             except Exception as e:
                                 return f"❌ Error checking dependencies: {str(e)[:100]}"
 
-                        def import_workflow(name: str, category: str, description: str, json_str: str):
+                        def import_workflow(
+                            name: str, category: str, description: str, json_str: str
+                        ):
                             """Import a workflow as a template."""
                             import json as json_module
 
@@ -1602,7 +1684,11 @@ def create_ui():
                                     # Auto-detect prompt inputs
                                     if "CLIPTextEncode" in class_type:
                                         if "text" in inputs:
-                                            param_name = "prompt" if "positive" not in parameters else "negative"
+                                            param_name = (
+                                                "prompt"
+                                                if "positive" not in parameters
+                                                else "negative"
+                                            )
                                             parameters[param_name] = ParameterDef(
                                                 type=ParameterType.STRING,
                                                 node_id=node_id,
@@ -1681,7 +1767,12 @@ def create_ui():
 
                         import_workflow_btn.click(
                             import_workflow,
-                            inputs=[import_workflow_name, import_workflow_category, import_workflow_desc, import_workflow_json],
+                            inputs=[
+                                import_workflow_name,
+                                import_workflow_category,
+                                import_workflow_desc,
+                                import_workflow_json,
+                            ],
                             outputs=[import_status],
                         )
 
@@ -1720,11 +1811,17 @@ def create_ui():
                         gr.Markdown("**Default Settings**")
 
                         with gr.Row():
-                            create_width = gr.Slider(256, 2048, value=1024, step=64, label="Default Width")
-                            create_height = gr.Slider(256, 2048, value=1024, step=64, label="Default Height")
+                            create_width = gr.Slider(
+                                256, 2048, value=1024, step=64, label="Default Width"
+                            )
+                            create_height = gr.Slider(
+                                256, 2048, value=1024, step=64, label="Default Height"
+                            )
 
                         with gr.Row():
-                            create_steps = gr.Slider(1, 100, value=25, step=1, label="Default Steps")
+                            create_steps = gr.Slider(
+                                1, 100, value=25, step=1, label="Default Steps"
+                            )
                             create_cfg = gr.Slider(1, 20, value=7.0, step=0.5, label="Default CFG")
 
                         create_negative = gr.Textbox(
@@ -1736,7 +1833,9 @@ def create_ui():
                         create_btn = gr.Button("✨ Create Workflow", variant="primary")
                         create_status = gr.Markdown("")
 
-                        def create_custom_workflow(name, base, desc, width, height, steps, cfg, negative):
+                        def create_custom_workflow(
+                            name, base, desc, width, height, steps, cfg, negative
+                        ):
                             """Create a custom workflow based on a template."""
                             if not name.strip():
                                 return "❌ Please provide a workflow name"
@@ -1750,6 +1849,7 @@ def create_ui():
 
                                 # Create new template based on existing
                                 import copy
+
                                 workflow_id = name.lower().replace(" ", "_").replace("-", "_")
 
                                 # Clone the base workflow
@@ -1797,7 +1897,16 @@ def create_ui():
 
                         create_btn.click(
                             create_custom_workflow,
-                            inputs=[create_name, create_base, create_desc, create_width, create_height, create_steps, create_cfg, create_negative],
+                            inputs=[
+                                create_name,
+                                create_base,
+                                create_desc,
+                                create_width,
+                                create_height,
+                                create_steps,
+                                create_cfg,
+                                create_negative,
+                            ],
                             outputs=[create_status],
                         )
 
@@ -1833,6 +1942,7 @@ def create_ui():
                 # Checkpoints Section
                 # -------------------------------------------------------------
                 with gr.Accordion("📦 Checkpoints (Base Models)", open=True):
+
                     def get_checkpoints_data():
                         """Get checkpoints with metadata."""
                         if not _is_online_cached():
@@ -1879,12 +1989,13 @@ def create_ui():
                             interactive=False,
                             scale=3,
                         )
-                        use_checkpoint_btn = gr.Button("📋 Copy to Clipboard", scale=1)
+                        gr.Button("📋 Copy to Clipboard", scale=1)
 
                 # -------------------------------------------------------------
                 # LoRA Section
                 # -------------------------------------------------------------
                 with gr.Accordion("🎭 LoRA Models", open=False):
+
                     def get_loras_data():
                         """Get LoRAs with metadata."""
                         if not _is_online_cached():
@@ -1919,12 +2030,15 @@ def create_ui():
                         wrap=True,
                     )
 
-                    lora_info = gr.Markdown("*Select a LoRA to see details. LoRAs modify the base model's output.*")
+                    gr.Markdown(
+                        "*Select a LoRA to see details. LoRAs modify the base model's output.*"
+                    )
 
                 # -------------------------------------------------------------
                 # Motion Models Section (for Video)
                 # -------------------------------------------------------------
                 with gr.Accordion("🎬 Motion Models (AnimateDiff)", open=False):
+
                     def get_motion_data():
                         """Get motion models."""
                         if not _is_online_cached():
@@ -1955,7 +2069,9 @@ def create_ui():
                         wrap=True,
                     )
 
-                    motion_info = gr.Markdown("*Motion models control animation style in video generation.*")
+                    gr.Markdown(
+                        "*Motion models control animation style in video generation.*"
+                    )
 
                 # -------------------------------------------------------------
                 # Samplers & Schedulers Section
@@ -1980,7 +2096,7 @@ def create_ui():
                                 interactive=False,
                             )
 
-                    sampler_tips = gr.Markdown("""
+                    gr.Markdown("""
 **Quick Guide:**
 - **Fast generation**: `euler_ancestral` + `normal` (creative, varied)
 - **Quality focus**: `dpmpp_2m_sde` + `karras` (detailed, consistent)
@@ -1992,6 +2108,7 @@ def create_ui():
                 # -------------------------------------------------------------
                 gr.Markdown("---")
                 with gr.Row():
+
                     def get_model_summary():
                         """Get summary of all models."""
                         if not _is_online_cached():
@@ -2111,8 +2228,9 @@ def create_ui():
 
                 def test_connection_detailed(url: str):
                     """Test connection with detailed diagnostics."""
-                    import httpx
                     import time
+
+                    import httpx
 
                     diagnostics = []
                     diagnostics.append(f"**Testing:** `{url}`\n")
@@ -2136,7 +2254,9 @@ def create_ui():
                                 vram_free = gpu.get("vram_free", 0) / (1024**3)
                                 vram_used = vram_total - vram_free
                                 diagnostics.append(f"✅ **GPU:** {gpu_name}")
-                                diagnostics.append(f"✅ **VRAM:** {vram_used:.1f} / {vram_total:.1f} GB ({(vram_used/vram_total)*100:.0f}% used)")
+                                diagnostics.append(
+                                    f"✅ **VRAM:** {vram_used:.1f} / {vram_total:.1f} GB ({(vram_used / vram_total) * 100:.0f}% used)"
+                                )
 
                             status = "🟢 **Connected**"
                         else:
@@ -2144,7 +2264,9 @@ def create_ui():
                             status = "🟡 **Partial**"
 
                     except httpx.ConnectError:
-                        diagnostics.append("❌ **Connection:** Failed - ComfyUI not running or wrong URL")
+                        diagnostics.append(
+                            "❌ **Connection:** Failed - ComfyUI not running or wrong URL"
+                        )
                         status = "🔴 **Offline**"
                     except httpx.TimeoutException:
                         diagnostics.append("❌ **Connection:** Timeout - Server not responding")
@@ -2160,17 +2282,28 @@ def create_ui():
                             queue = response.json()
                             running = len(queue.get("queue_running", []))
                             pending = len(queue.get("queue_pending", []))
-                            diagnostics.append(f"✅ **Queue:** {running} running, {pending} pending")
+                            diagnostics.append(
+                                f"✅ **Queue:** {running} running, {pending} pending"
+                            )
                     except:
                         diagnostics.append("⚠️ **Queue:** Could not fetch")
 
                     # Test 3: Models endpoint
                     try:
-                        response = httpx.get(f"{url.rstrip('/')}/object_info/CheckpointLoaderSimple", timeout=3.0)
+                        response = httpx.get(
+                            f"{url.rstrip('/')}/object_info/CheckpointLoaderSimple", timeout=3.0
+                        )
                         if response.status_code == 200:
                             data = response.json()
-                            checkpoints = data.get("CheckpointLoaderSimple", {}).get("input", {}).get("required", {}).get("ckpt_name", [[]])[0]
-                            diagnostics.append(f"✅ **Models:** {len(checkpoints)} checkpoints available")
+                            checkpoints = (
+                                data.get("CheckpointLoaderSimple", {})
+                                .get("input", {})
+                                .get("required", {})
+                                .get("ckpt_name", [[]])[0]
+                            )
+                            diagnostics.append(
+                                f"✅ **Models:** {len(checkpoints)} checkpoints available"
+                            )
                     except:
                         diagnostics.append("⚠️ **Models:** Could not fetch")
 
@@ -2226,24 +2359,36 @@ def create_ui():
 
                 with gr.Row():
                     timeout_connect = gr.Slider(
-                        1, 30, value=settings.comfyui.timeout_connect, step=1,
+                        1,
+                        30,
+                        value=settings.comfyui.timeout_connect,
+                        step=1,
                         label="Connect Timeout (s)",
                         info="Time to wait for initial connection",
                     )
                     timeout_read = gr.Slider(
-                        5, 120, value=settings.comfyui.timeout_read, step=5,
+                        5,
+                        120,
+                        value=settings.comfyui.timeout_read,
+                        step=5,
                         label="Read Timeout (s)",
                         info="Time to wait for response",
                     )
 
                 with gr.Row():
                     timeout_image = gr.Slider(
-                        30, 300, value=settings.comfyui.timeout_image, step=10,
+                        30,
+                        300,
+                        value=settings.comfyui.timeout_image,
+                        step=10,
                         label="Image Generation Timeout (s)",
                         info="Max time for image generation",
                     )
                     timeout_video = gr.Slider(
-                        60, 600, value=settings.comfyui.timeout_video, step=30,
+                        60,
+                        600,
+                        value=settings.comfyui.timeout_video,
+                        step=30,
                         label="Video Generation Timeout (s)",
                         info="Max time for video generation",
                     )
@@ -2273,18 +2418,23 @@ def create_ui():
                 gr.Markdown("### 🔄 Auto-Reconnect")
 
                 with gr.Row():
-                    auto_reconnect_enabled = gr.Checkbox(
+                    gr.Checkbox(
                         label="Enable Auto-Reconnect",
                         value=True,
                         info="Automatically try to reconnect when connection is lost",
                     )
-                    reconnect_interval = gr.Slider(
-                        5, 60, value=15, step=5,
+                    gr.Slider(
+                        5,
+                        60,
+                        value=15,
+                        step=5,
                         label="Reconnect Interval (s)",
                         info="Time between reconnection attempts",
                     )
 
-                auto_reconnect_status = gr.Markdown("*Auto-reconnect will attempt to restore connection if ComfyUI becomes unavailable*")
+                gr.Markdown(
+                    "*Auto-reconnect will attempt to restore connection if ComfyUI becomes unavailable*"
+                )
 
                 gr.Markdown("---")
 
@@ -2307,7 +2457,9 @@ def create_ui():
                         vram_total = device.get("vram_total", 0) / (1024**3)
                         vram_free = device.get("vram_free", 0) / (1024**3)
                         info.append(f"- VRAM: {vram_total - vram_free:.1f} / {vram_total:.1f} GB")
-                        info.append(f"- Torch VRAM: {device.get('torch_vram_total', 0) / (1024**3):.1f} GB")
+                        info.append(
+                            f"- Torch VRAM: {device.get('torch_vram_total', 0) / (1024**3):.1f} GB"
+                        )
 
                     return "\n".join(info) if info else "No GPU info available"
 
@@ -2323,7 +2475,7 @@ def create_ui():
                 gr.Markdown("### ❓ Help & Documentation")
 
                 with gr.Accordion("Quick Help", open=False):
-                    help_content = gr.Markdown(format_help_list())
+                    gr.Markdown(format_help_list())
 
                     help_topic = gr.Dropdown(
                         choices=list_topics(),
@@ -2352,6 +2504,7 @@ def create_ui():
 
 if __name__ == "__main__":
     import os
+
     port = int(os.environ.get("GRADIO_SERVER_PORT", 7870))
     app = create_ui()
     # Gradio 6.0: pass theme/css to launch()
