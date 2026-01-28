@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Mikey Frilot" }
+    {name = "mcp-tool-shop", email = "64996768+mcp-tool-shop@users.noreply.github.com"}
 ]
 keywords = [
     "comfyui",
@@ -188,4 +188,3 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
 ]
-
