@@ -35,6 +35,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+license-files = ["LICENSE"]
+
 # Core dependencies - minimal for basic functionality
 # httpx removed from core - now optional for AI features
 dependencies = [
